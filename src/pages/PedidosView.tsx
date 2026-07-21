@@ -40,7 +40,7 @@ export function PedidosView() {
           <div className="hidden lg:flex flex-col bg-slate-800 rounded-[24px] shadow-xl overflow-hidden shrink-0">
             <div className="p-5 flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                <p className="text-[11px] text-slate-300 font-bold uppercase tracking-widest mb-1">Total a cobrar</p>
+                <p className="text-[11px] text-slate-300 font-bold uppercase tracking-widest mb-1">Total del pedido</p>
                 <div className="text-3xl font-black text-white leading-none">S/ {total.toFixed(2)}</div>
               </div>
               <button
@@ -48,7 +48,7 @@ export function PedidosView() {
                 disabled={guardando}
                 className="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-extrabold py-4 px-8 rounded-2xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-3 hover:shadow-xl hover:scale-[1.02] border border-emerald-400/50 disabled:opacity-70"
               >
-                <span className="tracking-wide uppercase text-sm">{guardando ? 'Guardando...' : 'Cobrar'}</span>
+                <span className="tracking-wide uppercase text-sm">{guardando ? 'Enviando...' : 'Enviar a Cocina'}</span>
                 {!guardando && <span className="text-xl leading-none">➜</span>}
               </button>
             </div>
