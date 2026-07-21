@@ -20,7 +20,7 @@ function AuthenticatedApp() {
           {vista === 'pedidos' ? <PedidosView /> : <CocinaView onVolverAPedidos={() => setVista('pedidos')} />}
         </main>
       </CartProvider>
-      <AvisosMeseroToasts />
+      {vista === 'pedidos' && <AvisosMeseroToasts />}
     </NotificationProvider>
   )
 }
