@@ -1,8 +1,11 @@
 # Migración de PedidosV2 a React + Vite + TypeScript + Tailwind
 
-> **Estado actual**: Fases 1-3 completadas (scaffold en `web-new/`, `AuthContext` +
-> `LoginPage`, `AppDataContext`). En espera de credenciales de prueba para verificar
-> visualmente el login exitoso y la carga de datos antes de seguir con la Fase 4.
+> **Estado actual**: Fases 1-10 completadas y el proyecto ya vive en la raíz del
+> repo (cutover hecho, `app.js`/`auth.js`/`index.html`/`login.html` viejos
+> eliminados, todo commiteado en git). Falta que el usuario pruebe a mano los
+> flujos que escriben de verdad en Supabase (confirmar pedido, guardar edición de
+> pedido, marcar plato servido — ver checklist de la Fase 10) y la Fase 11
+> (deploy a Vercel), que requiere su cuenta.
 
 ## Contexto
 
@@ -195,40 +198,40 @@ contra Supabase, en mobile viewport.
 **Fase 3 — Datos compartidos** ✅
 `AppDataContext` con productos/mesas/meseros/extras + realtime de mesas con cleanup.
 
-**Fase 4 — Vista Pedidos (parte 1: selección y carrito)**
+**Fase 4 — Vista Pedidos (parte 1: selección y carrito)** ✅
 `AppShell`, `ServiceTypeTabs`, `MesaGrid`, `DeliveryPanel`, `ClienteMeseroPanel`,
 `ProductPicker` (con extras cantidad/checkbox), `CartTable`, `MobileOrderBar`,
 `confirmarPedido`. Validar en 375px que el flujo completo de armar un pedido es
 usable con el pulgar (targets táctiles, barra inferior fija).
 
-**Fase 5 — PersonalizeModal genérico**
+**Fase 5 — PersonalizeModal genérico** ✅
 Construir el modal compartido y enchufarlo primero al flujo de carrito (equivalente a
 `abrirModalEditar`/`guardarCambiosModal` de hoy). Probar que el modal scrollea bien y
 no se corta en 375×667 con muchos extras.
 
-**Fase 6 — EditarPedidoModal**
+**Fase 6 — EditarPedidoModal** ✅
 Abrir desde mesa ocupada, listar/editar/eliminar platos, reusar `PersonalizeModal` para
 personalizar un plato del pedido en edición, `guardarCambiosEditar` con la misma lógica
 de deletes/updates/inserts + recálculo de total que hoy. Mismo chequeo de scroll/altura
 en mobile que la Fase 5.
 
-**Fase 7 — Vista Cocina**
+**Fase 7 — Vista Cocina** ✅
 `CocinaView` con KPIs, grid de cola, resumen por tipo de servicio, realtime con
 cleanup, `marcarPlatoServido`. Grid de cola probado en 375px (columnas, texto no
 cortado, `MobileKitchenBar`).
 
-**Fase 8 — Pasada final de responsive**
+**Fase 8 — Pasada final de responsive** ✅
 Comparación lado a lado (viejo vs nuevo) en 375×667 (iPhone SE), un tamaño mobile
 grande (ej. 390×844) y desktop — no es "el pulido", es la verificación de que el
 trabajo mobile-first de cada fase anterior efectivamente se sostiene junto, mobile nav
 menu, barras fijas, safe-area, glass header incluidos.
 
-**Fase 9 — Cutover**
+**Fase 9 — Cutover** ✅
 Mover `web-new/*` a la raíz del repo, actualizar `.gitignore` (`node_modules`, `.env`,
 `dist`), eliminar `app.js`, `auth.js`, `index.html`/`login.html` viejos **solo después
 de la verificación manual de la Fase 10**.
 
-**Fase 10 — QA manual (checklist end-to-end)**
+**Fase 10 — QA manual (checklist end-to-end)** — parcial ✅ (ver nota abajo)
 Sin test suite automatizada (no existía antes), verificar a mano con `yarn dev`,
 **siempre arrancando en viewport 375×667**:
 1. Login/logout con usuario real.
