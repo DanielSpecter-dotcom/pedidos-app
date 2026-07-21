@@ -6,7 +6,7 @@ interface MesaGridProps {
 }
 
 export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
-  const { mesas } = useAppData()
+  const { mesas, estadoPedidoPorMesa } = useAppData()
   const { mesasSeleccionadas, toggleMesa } = useCart()
 
   return (
@@ -53,7 +53,12 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
                 <span className="text-[9px] font-black opacity-60 uppercase tracking-widest mt-1">Mesa</span>
                 <span className="text-2xl font-black leading-none">{m.NumeroMesa}</span>
                 {isOcupada && (
-                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full shadow-sm"></span>
+                  <span
+                    title={estadoPedidoPorMesa[m.MesaID] === 'SERVIDO' ? 'Servido — falta cobrar' : 'En cocina'}
+                    className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white shadow-sm border border-red-200 flex items-center justify-center text-[10px]"
+                  >
+                    {estadoPedidoPorMesa[m.MesaID] === 'SERVIDO' ? '✅' : '🍳'}
+                  </span>
                 )}
               </div>
             )
