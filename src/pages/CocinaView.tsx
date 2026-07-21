@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import { useAppData } from '../contexts/AppDataContext'
+import { useNotifications } from '../contexts/NotificationContext'
 import { KitchenQueueGrid } from '../components/KitchenQueueGrid'
 import { KitchenSummary } from '../components/KitchenSummary'
 import { MobileKitchenBar } from '../components/MobileKitchenBar'
@@ -13,6 +14,7 @@ interface CocinaViewProps {
 
 export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const { productos, categorias, meseros, refetchMesas } = useAppData()
+  const { enviarAvisoMesero } = useNotifications()
   const [pedidosCola, setPedidosCola] = useState<PedidoCola[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(false)
@@ -171,6 +173,14 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
     }
   }, [cargarVistaCocina])
 
+  function avisarMesero(pedido: PedidoCola) {
+    enviarAvisoMesero({
+      pedidoId: pedido.pedidoId,
+      labelUbicacion: pedido.labelUbicacion,
+      clienteNombre: pedido.clienteNombre,
+    })
+  }
+
   async function marcarPedidoListo(pedidoId: number) {
     if (!confirm('¿Marcar todo el pedido como listo?')) return
 
@@ -258,7 +268,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
                   <span className="text-xs font-bold">No se pudo cargar la cola de cocina.</span>
                 </div>
               ) : (
-                <KitchenQueueGrid pedidos={pedidosCola} onMarcarListo={marcarPedidoListo} />
+                <KitchenQueueGrid pedidos={pedidosCola} onMarcarListo={marcarPedidoListo} onAvisarMesero={avisarMesero} />
               )}
             </div>
           </div>

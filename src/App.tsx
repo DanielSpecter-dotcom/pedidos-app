@@ -2,21 +2,26 @@ import { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { AppDataProvider } from './contexts/AppDataContext'
 import { CartProvider } from './contexts/CartContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import { LoginPage } from './pages/LoginPage'
 import { PedidosView } from './pages/PedidosView'
 import { CocinaView } from './pages/CocinaView'
 import { AppHeader } from './components/AppHeader'
+import { AvisosMeseroToasts } from './components/AvisosMeseroToasts'
 
 function AuthenticatedApp() {
   const [vista, setVista] = useState<'pedidos' | 'cocina'>('pedidos')
 
   return (
-    <CartProvider>
-      <AppHeader vista={vista} onChangeVista={setVista} />
-      <main className="flex-1 w-full max-w-[1600px] h-auto lg:h-full flex flex-col lg:overflow-hidden relative pb-40 lg:pb-0">
-        {vista === 'pedidos' ? <PedidosView /> : <CocinaView onVolverAPedidos={() => setVista('pedidos')} />}
-      </main>
-    </CartProvider>
+    <NotificationProvider>
+      <CartProvider>
+        <AppHeader vista={vista} onChangeVista={setVista} />
+        <main className="flex-1 w-full max-w-[1600px] h-auto lg:h-full flex flex-col lg:overflow-hidden relative pb-40 lg:pb-0">
+          {vista === 'pedidos' ? <PedidosView /> : <CocinaView onVolverAPedidos={() => setVista('pedidos')} />}
+        </main>
+      </CartProvider>
+      <AvisosMeseroToasts />
+    </NotificationProvider>
   )
 }
 

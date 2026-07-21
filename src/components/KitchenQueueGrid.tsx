@@ -4,9 +4,10 @@ import type { PedidoCola } from '../types'
 interface KitchenQueueGridProps {
   pedidos: PedidoCola[]
   onMarcarListo: (pedidoId: number) => void
+  onAvisarMesero: (pedido: PedidoCola) => void
 }
 
-export function KitchenQueueGrid({ pedidos, onMarcarListo }: KitchenQueueGridProps) {
+export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero }: KitchenQueueGridProps) {
   if (pedidos.length === 0) {
     return (
       <div className="col-span-full min-h-[300px] flex flex-col items-center justify-center text-slate-300 select-none">
@@ -21,14 +22,23 @@ export function KitchenQueueGrid({ pedidos, onMarcarListo }: KitchenQueueGridPro
   return (
     <>
       {pedidos.map((pedido) => (
-        <PedidoColaCard key={pedido.pedidoId} pedido={pedido} onMarcarListo={onMarcarListo} />
+        <PedidoColaCard key={pedido.pedidoId} pedido={pedido} onMarcarListo={onMarcarListo} onAvisarMesero={onAvisarMesero} />
       ))}
     </>
   )
 }
 
-function PedidoColaCard({ pedido, onMarcarListo }: { pedido: PedidoCola; onMarcarListo: (pedidoId: number) => void }) {
+function PedidoColaCard({
+  pedido,
+  onMarcarListo,
+  onAvisarMesero,
+}: {
+  pedido: PedidoCola
+  onMarcarListo: (pedidoId: number) => void
+  onAvisarMesero: (pedido: PedidoCola) => void
+}) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set())
+  const [avisado, setAvisado] = useState(false)
   const urgent = pedido.minutosEspera >= 15
 
   function toggleMarcado(detalleId: number) {
@@ -38,6 +48,11 @@ function PedidoColaCard({ pedido, onMarcarListo }: { pedido: PedidoCola; onMarca
       else next.add(detalleId)
       return next
     })
+  }
+
+  function handleAvisar() {
+    onAvisarMesero(pedido)
+    setAvisado(true)
   }
 
   return (
@@ -85,12 +100,22 @@ function PedidoColaCard({ pedido, onMarcarListo }: { pedido: PedidoCola; onMarca
         ))}
       </div>
 
-      <button
-        onClick={() => onMarcarListo(pedido.pedidoId)}
-        className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-black uppercase tracking-wide active:scale-[0.98] transition-all shrink-0"
-      >
-        Marcar Listo ✓
-      </button>
+      <div className="grid grid-cols-2 gap-px bg-slate-100 shrink-0">
+        <button
+          onClick={handleAvisar}
+          className={`h-12 text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 ${
+            avisado ? 'bg-amber-50 text-amber-600' : 'bg-amber-400 hover:bg-amber-500 text-slate-900'
+          }`}
+        >
+          {avisado ? '🔔 Mesero avisado' : '🔔 Avisar Mesero'}
+        </button>
+        <button
+          onClick={() => onMarcarListo(pedido.pedidoId)}
+          className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all"
+        >
+          Marcar Listo ✓
+        </button>
+      </div>
     </article>
   )
 }
