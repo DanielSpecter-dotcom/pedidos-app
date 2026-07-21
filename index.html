@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Pedidos - Melchorita</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        guinda: { DEFAULT: '#8B182B', light: '#9D253A', dark: '#5A101B', 50: '#FDF2F4' },
+                        amarillo: { DEFAULT: '#FBBF24', hover: '#F59E0B', light: '#FEF3C7' }
+                    },
+                    screens: { 'xs': '380px' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    boxShadow: {
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.05)',
+                        'soft': '0 4px 20px -2px rgba(0,0,0,0.03)',
+                        'premium': '0 10px 40px -10px rgba(139, 24, 43, 0.15)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; background-color: #F8FAFC; }
+        body { overscroll-behavior-y: none; }
+
+        /* Custom Scrollbars */
+        .thin-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .thin-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
+        .thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Interactive Elements Custom Classes */
+        .servicio-activo {
+            background: linear-gradient(135deg, #8B182B, #5A101B) !important;
+            color: white !important; border-color: transparent !important;
+            box-shadow: 0 8px 20px -6px rgba(139, 24, 43, 0.5); transform: translateY(-2px);
+        }
+        
+        .mesa-seleccionada {
+            background: linear-gradient(135deg, #8B182B, #5A101B) !important;
+            border-color: rgba(251, 191, 36, 0.8) !important; color: white !important;
+            transform: scale(1.05) translateY(-2px) !important; z-index: 10;
+            box-shadow: 0 12px 24px -6px rgba(139, 24, 43, 0.4);
+        }
+        
+        .mesa-ocupada {
+            background: linear-gradient(145deg, #FEF2F2, #FFF5F5) !important;
+            border-color: #FECACA !important; color: #991B1B !important;
+        }
+        .mesa-ocupada:hover { 
+            border-color: #F87171 !important; 
+            box-shadow: 0 8px 20px -6px rgba(239,68,68,0.25); 
+            transform: translateY(-2px); 
+        }
+        .mesa-ocupada:active { transform: scale(0.97) !important; }
+
+        /* Animations */
+        .modal-animate { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUpFade { 
+            from { transform: translateY(100px) scale(0.98); opacity: 0; } 
+            to { transform: translateY(0) scale(1); opacity: 1; } 
+        }
+        
+        .fade-animate { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(4px); } }
+
+        /* General fixes */
+        .detalle-item { transition: background-color 0.2s ease, transform 0.2s ease; }
+        .detalle-item:hover { background: #F8FAFC; }
+        
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .safe-bottom { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+            .safe-top { padding-top: env(safe-area-inset-top); }
+        }
+        
+        select { 
+            -webkit-appearance: none; appearance: none; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); 
+            background-repeat: no-repeat; background-position: right 14px center; 
+        }
+
+        .soft-pulse { animation: softPulse 2.5s ease-in-out infinite; }
+        @keyframes softPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } }
+
+        /* Glassmorphism Classes */
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+        }
+
+        #panelMapa, #panelDelivery { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .view-tab-active {
+            background: #111827 !important;
+            color: #fff !important;
+            border-color: #111827 !important;
+            box-shadow: 0 10px 24px -14px rgba(15, 23, 42, 0.7);
+        }
+
+        .kitchen-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid rgba(226, 232, 240, 0.95);
+        }
+
+        .mobile-nav-menu {
+            transform-origin: top right;
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+        }
+
+        .mobile-nav-menu.menu-hidden {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.97);
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .mobile-nav-menu.menu-visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        @media (max-width: 1023px) {
+            .mobile-flow { min-height: auto; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 font-sans min-h-[100dvh] lg:h-[100dvh] lg:overflow-hidden flex flex-col items-center">
+
+    <!-- HEADER (Glassmorphism) -->
+    <header class="w-full h-16 shrink-0 flex justify-between items-center px-5 sm:px-8 z-[40] sticky top-0 glass-header shadow-sm safe-top">
+        <div class="flex items-center gap-3.5">
+            <div class="w-11 h-11 bg-gradient-to-br from-guinda to-guinda-dark rounded-[14px] flex items-center justify-center text-white font-black text-xl shadow-lg shadow-guinda/20 border border-white/10 ring-2 ring-white/50">
+                M
+            </div>
+            <div class="flex flex-col justify-center">
+                <h1 class="text-lg font-black text-slate-900 leading-tight tracking-tight">Melchorita</h1>
+                <div class="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold bg-slate-100/50 px-2 py-0.5 rounded-full w-fit">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span id="fechaActual">Conectando...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2 lg:gap-5">
+            <div class="hidden sm:flex items-center gap-1.5 rounded-2xl bg-slate-100/80 p-1 border border-slate-200">
+                <button id="btnVistaPedidos" onclick="cambiarVista('pedidos')" class="view-tab-active px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500 border border-transparent transition-all">
+                    Pedidos
+                </button>
+                <button id="btnVistaCocina" onclick="cambiarVista('cocina')" class="px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500 border border-transparent transition-all">
+                    Cocina
+                </button>
+            </div>
+            <button id="mobileMenuButton" onclick="toggleMobileMenu()" aria-label="Abrir menú" aria-expanded="false" class="sm:hidden w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center text-white border border-slate-700 active:scale-90 transition-all cursor-pointer hover:bg-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10" />
+                </svg>
+            </button>
+            <button onclick="cerrarSesion()" class="text-[11px] font-bold text-slate-400 uppercase tracking-wide hover:text-red-500 transition-colors hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-red-50">
+                <span>Cerrar Sesión</span>
+            </button>
+            <div onclick="cerrarSesion()" title="Cerrar Sesión" class="hidden w-11 h-11 rounded-2xl bg-red-50 items-center justify-center text-red-500 border border-red-100 active:scale-90 transition-all cursor-pointer hover:bg-red-100">
+                🚪
+            </div>
+            <div class="hidden sm:flex w-11 h-11 rounded-2xl bg-white shadow-soft items-center justify-center text-slate-400 border border-slate-100 active:scale-90 transition-all cursor-pointer relative hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span class="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-guinda rounded-full border-2 border-white soft-pulse shadow-sm shadow-guinda/50"></span>
+            </div>
+        </div>
+    </header>
+
+    <div id="mobileNavMenu" class="mobile-nav-menu menu-hidden sm:hidden fixed top-[calc(4rem+env(safe-area-inset-top))] right-4 z-[60] w-[min(260px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15">
+        <div class="px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Navegación</div>
+        <button onclick="seleccionarMenuMovil('pedidos')" class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-guinda-50 text-guinda">⌂</span>
+            Pedidos
+        </button>
+        <button onclick="seleccionarMenuMovil('cocina')" class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">⌁</span>
+            Cocina
+        </button>
+        <div class="my-1 border-t border-slate-100"></div>
+        <button onclick="cerrarSesionDesdeMenu()" class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 active:bg-red-100">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">↪</span>
+            Cerrar sesión
+        </button>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+        <main class="flex-1 w-full max-w-[1600px] h-auto lg:h-full flex flex-col lg:overflow-hidden relative pb-40 lg:pb-0">
+        <div id="orderView" class="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 h-auto lg:h-full lg:p-6 w-full mobile-flow">
+            
+            <!-- LEFT PANEL: Selections & Tables -->
+            <div class="flex flex-col lg:col-span-7 xl:col-span-8 h-auto lg:h-full w-full max-w-full overflow-hidden">
+                
+                <!-- Service Type Tabs -->
+                <div class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 lg:px-0 shrink-0 py-4 w-full border-b lg:border-none border-slate-200/50">
+                    <button data-servicio="MESA" class="radio-btn min-w-[85px] flex-1 bg-white border border-slate-200 rounded-[20px] py-3.5 px-2 text-xs font-bold text-slate-500 shadow-soft flex flex-col items-center justify-center gap-2 servicio-activo transition-all duration-300 active:scale-95 hover:border-slate-300" onclick="selectService(this)">
+                        <span class="text-2xl leading-none">🍽️</span> Mesa
+                    </button>
+                    <button data-servicio="LLEVAR" class="radio-btn min-w-[85px] flex-1 bg-white border border-slate-200 rounded-[20px] py-3.5 px-2 text-xs font-bold text-slate-500 shadow-soft flex flex-col items-center justify-center gap-2 transition-all duration-300 active:scale-95 hover:border-slate-300" onclick="selectService(this)">
+                        <span class="text-2xl leading-none">🥡</span> Llevar
+                    </button>
+                    <button data-servicio="RECOGER" class="radio-btn min-w-[85px] flex-1 bg-white border border-slate-200 rounded-[20px] py-3.5 px-2 text-xs font-bold text-slate-500 shadow-soft flex flex-col items-center justify-center gap-2 transition-all duration-300 active:scale-95 hover:border-slate-300" onclick="selectService(this)">
+                        <span class="text-2xl leading-none">🎒</span> Recoger
+                    </button>
+                    <button data-servicio="DELIVERY" class="radio-btn min-w-[85px] flex-1 bg-white border border-slate-200 rounded-[20px] py-3.5 px-2 text-xs font-bold text-slate-500 shadow-soft flex flex-col items-center justify-center gap-2 transition-all duration-300 active:scale-95 hover:border-slate-300" onclick="selectService(this)">
+                        <span class="text-2xl leading-none">🛵</span> Delivery
+                    </button>
+                </div>
+
+                <!-- PANEL MAPA DE MESAS -->
+                <div id="panelMapa" class="bg-white lg:rounded-[24px] shadow-glass border-y lg:border border-slate-200/60 flex flex-col relative min-h-[400px] lg:h-full lg:flex-1 mx-0 lg:mx-0 w-full z-10">
+                    <div class="px-5 py-3.5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 lg:rounded-t-[24px]">
+                        <h2 class="font-extrabold text-slate-800 flex items-center gap-2.5 text-sm uppercase tracking-wide">
+                            📍 Salón Principal <span class="bg-guinda/10 text-guinda px-2.5 py-1 rounded-xl text-xs font-black border border-guinda/20" id="countMesas">—</span>
+                        </h2>
+                        <div class="flex gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden xs:flex">
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full border-2 border-slate-200 bg-white shadow-soft"></span> Libre</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-guinda shadow-soft shadow-guinda/30"></span> Sel</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-100 border-2 border-red-300"></span> Ocp</div>
+                        </div>
+                    </div>
+                    <!-- Background pattern for tables -->
+                    <div class="flex-1 p-4 lg:p-5 overflow-y-auto thin-scrollbar bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:20px_20px] bg-[position:center_center]">
+                        <div class="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 lg:gap-4 pb-4" id="mesasContainer"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL DELIVERY (oculto por defecto) -->
+                <div id="panelDelivery" class="hidden bg-white lg:rounded-[24px] shadow-glass border-y lg:border border-slate-200/60 flex flex-col lg:h-full lg:flex-1 w-full">
+                    <div class="px-6 py-5 border-b border-slate-100 flex items-center gap-4 bg-white lg:rounded-t-[24px]">
+                        <div class="w-12 h-12 bg-gradient-to-br from-guinda to-guinda-light rounded-[16px] flex items-center justify-center text-2xl shrink-0 shadow-soft shadow-guinda/20 text-white">🛵</div>
+                        <div>
+                            <h2 class="font-extrabold text-slate-800 text-lg leading-tight">Datos de Envío</h2>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5">Llega directo a su puerta</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 p-6 space-y-6 overflow-y-auto thin-scrollbar bg-slate-50/30">
+                        <div class="space-y-5 max-w-lg mx-auto">
+                            <!-- Nombre -->
+                            <div>
+                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Destinatario <span class="text-red-400">*</span></label>
+                                <div class="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-guinda focus-within:ring-4 focus-within:ring-guinda/10 transition-all shadow-sm">
+                                    <div class="w-12 h-12 bg-slate-50 flex items-center justify-center text-xl border-r border-slate-100 shrink-0 text-slate-400">👤</div>
+                                    <input type="text" id="txtNombreDelivery" placeholder="Nombre completo" class="flex-1 h-12 px-4 text-sm font-semibold text-slate-800 bg-transparent outline-none placeholder-slate-300">
+                                </div>
+                            </div>
+                            <!-- Dirección -->
+                            <div>
+                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Dirección <span class="text-red-400">*</span></label>
+                                <div class="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-guinda focus-within:ring-4 focus-within:ring-guinda/10 transition-all shadow-sm">
+                                    <div class="w-12 h-12 bg-slate-50 flex items-center justify-center text-xl border-r border-slate-100 shrink-0 text-slate-400">📍</div>
+                                    <input type="text" id="txtDireccionDelivery" placeholder="Jr. Independencia 123" class="flex-1 h-12 px-4 text-sm font-semibold text-slate-800 bg-transparent outline-none placeholder-slate-300">
+                                </div>
+                            </div>
+                            <!-- Teléfono -->
+                            <div>
+                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Teléfono <span class="text-red-400">*</span></label>
+                                <div class="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-guinda focus-within:ring-4 focus-within:ring-guinda/10 transition-all shadow-sm">
+                                    <div class="w-12 h-12 bg-slate-50 flex items-center justify-center text-xl border-r border-slate-100 shrink-0 text-slate-400">📞</div>
+                                    <input type="tel" id="txtTelefonoDelivery" placeholder="999 999 999" maxlength="15" class="flex-1 h-12 px-4 text-sm font-semibold text-slate-800 bg-transparent outline-none placeholder-slate-300">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT PANEL: Order Form & Cart -->
+            <div class="flex flex-col lg:col-span-5 xl:col-span-4 h-auto lg:h-full lg:overflow-hidden p-5 lg:p-0 gap-4 lg:gap-5 max-w-full">
+                
+                <!-- Client Info Card -->
+                <div class="bg-white rounded-[24px] shadow-glass p-4 sm:p-5 border border-slate-200/60 shrink-0 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-guinda/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    <div class="space-y-3.5 relative z-10">
+                        <div class="flex gap-3 items-center bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                            <div class="w-10 h-10 rounded-xl bg-white text-guinda flex items-center justify-center text-xl shrink-0 shadow-sm font-bold">🤵</div>
+                            <select id="cboMeseros" class="w-full bg-transparent font-bold text-slate-700 text-sm focus:outline-none pr-8">
+                                <option value="" disabled selected>Seleccionando cajero...</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="tel" id="txtDni" placeholder="DNI" oninput="buscarClientePorDni(this.value)"
+                                class="w-[30%] bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold focus:bg-white focus:border-amarillo focus:ring-4 focus:ring-amarillo/20 outline-none text-center transition-all placeholder-slate-400 shadow-inner">
+                            <input type="text" id="txtNombreCliente" placeholder="Nombre completo del cliente"
+                                class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold focus:bg-white focus:border-amarillo focus:ring-4 focus:ring-amarillo/20 outline-none transition-all placeholder-slate-400 shadow-inner">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Selection Tool -->
+                <div class="bg-white rounded-[24px] shadow-premium p-4 sm:p-5 border border-slate-100 shrink-0 z-20 sticky lg:static top-28 lg:top-0">
+                    <div class="flex gap-2.5 w-full mb-3">
+                        <select id="cboProductos" onchange="onProductoSeleccionadoCambio()" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl h-12 px-4 focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner truncate pr-10 transition-all">
+                            <option value="" disabled selected>🔍 Buscar un plato...</option>
+                        </select>
+                        <input type="number" id="txtCantidad" value="1" min="1"
+                            class="w-[60px] shrink-0 text-center font-bold border border-slate-200 rounded-2xl h-12 text-sm focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner bg-slate-50 transition-all">
+                    </div>
+                    <!-- Agregados tipo casilla según categoría (ej. Helado) — se
+                         llena dinámicamente desde la tabla Extras. -->
+                    <div id="extrasCheckboxProductos" class="flex flex-wrap gap-2 mb-3 empty:mb-0"></div>
+                    <div class="flex justify-between items-center gap-3">
+                        <label class="flex items-center gap-2.5 text-[11px] font-bold text-slate-500 uppercase cursor-pointer whitespace-nowrap bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors select-none">
+                            <input type="checkbox" id="chkLlevar" class="accent-amarillo w-4 h-4 rounded shadow-sm">
+                            <span>P/ Llevar</span>
+                        </label>
+                        <button onclick="agregarProducto()" class="bg-gradient-to-r from-amarillo to-amber-400 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-extrabold h-10 px-5 sm:px-6 rounded-xl shadow-lg shadow-amarillo/30 text-[11px] uppercase tracking-wider active:scale-95 transition-all flex-1 sm:flex-none flex justify-center items-center gap-1.5 focus:ring-4 focus:ring-amarillo/30">
+                            Agregar <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ticket / Cart Table -->
+                <div class="bg-white rounded-[24px] shadow-glass border border-slate-200/60 flex flex-col min-h-[250px] lg:min-h-0 lg:flex-1 lg:overflow-hidden relative mb-12 lg:mb-0">
+                    <!-- Ticket header -->
+                    <div class="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest grid grid-cols-[40px_1fr_75px_40px] items-center border-b border-slate-200 shrink-0 h-9 rounded-t-[24px] px-2">
+                        <div class="text-center">#</div>
+                        <div class="pl-2">Descripción</div>
+                        <div class="text-right pr-2">Total</div>
+                        <div></div>
+                    </div>
+                    
+                    <!-- Ticket body -->
+                    <div class="lg:overflow-y-auto flex-1 thin-scrollbar p-0 bg-white rounded-b-[24px]">
+                        <table class="w-full text-left border-collapse table-fixed">
+                            <tbody id="listaDetalle" class="divide-y divide-slate-50 text-xs font-semibold text-slate-700"></tbody>
+                        </table>
+                        <div id="emptyState" class="h-40 lg:h-full flex flex-col items-center justify-center text-slate-300 select-none opacity-80">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2 stroke-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Comienza a agregar</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Desktop Confirm Button -->
+                <div class="hidden lg:flex flex-col bg-slate-800 rounded-[24px] shadow-xl overflow-hidden shrink-0">
+                    <div class="p-5 flex items-center justify-between gap-4">
+                        <div class="flex flex-col">
+                            <p class="text-[11px] text-slate-300 font-bold uppercase tracking-widest mb-1">Total a cobrar</p>
+                            <div class="text-3xl font-black text-white leading-none">S/ <span id="lblTotal" class="tracking-tight">0.00</span></div>
+                        </div>
+                        <button onclick="confirmarPedido()" class="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-extrabold py-4 px-8 rounded-2xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-3 hover:shadow-xl hover:scale-[1.02] border border-emerald-400/50">
+                            <span class="tracking-wide uppercase text-sm">Cobrar</span>
+                            <span class="text-xl leading-none">➜</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <section id="kitchenView" class="hidden h-auto lg:h-full w-full p-4 sm:p-6 lg:overflow-hidden">
+            <div class="h-auto lg:h-full flex flex-col gap-4">
+                <div class="bg-slate-900 text-white rounded-[24px] shadow-xl overflow-hidden border border-slate-800 shrink-0">
+                    <div class="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                        <div>
+                            <p class="text-[11px] font-black text-amber-300 uppercase tracking-[0.22em] mb-2">Vista de cocina</p>
+                            <h2 class="text-2xl sm:text-3xl font-black leading-tight">Pedidos en cola</h2>
+                            <p class="text-sm text-slate-300 font-medium mt-1">Ordenados por llegada para preparar sin perder el ritmo.</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 sm:gap-3 min-w-0 md:min-w-[360px]">
+                            <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                                <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Platos</span>
+                                <strong id="kpiPlatosCola" class="block text-2xl font-black leading-tight mt-1">0</strong>
+                            </div>
+                            <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                                <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Pedidos</span>
+                                <strong id="kpiPedidosCola" class="block text-2xl font-black leading-tight mt-1">0</strong>
+                            </div>
+                            <div class="rounded-2xl bg-white/10 border border-white/10 p-3">
+                                <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Tiempo</span>
+                                <strong id="kpiTiempoCola" class="block text-2xl font-black leading-tight mt-1">0m</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 min-h-0 lg:flex-1">
+                    <div class="kitchen-card rounded-[24px] shadow-glass overflow-hidden flex flex-col min-h-[420px] lg:min-h-0">
+                        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-white">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wide">Cola activa</h3>
+                                <p id="kitchenLastSync" class="text-[11px] font-bold text-slate-400 mt-0.5">Sincronizando...</p>
+                            </div>
+                            <button onclick="cargarVistaCocina()" class="h-10 px-4 rounded-xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all">
+                                Actualizar
+                            </button>
+                        </div>
+                        <div id="kitchenQueue" class="flex-1 overflow-y-auto thin-scrollbar p-4 sm:p-5 grid grid-cols-1 xl:grid-cols-2 gap-4 content-start"></div>
+                    </div>
+
+                    <aside class="bg-white rounded-[24px] shadow-glass border border-slate-200/80 overflow-hidden lg:min-h-0">
+                        <div class="px-5 py-4 border-b border-slate-100">
+                            <h3 class="text-sm font-black text-slate-800 uppercase tracking-wide">Resumen</h3>
+                            <p class="text-[11px] font-bold text-slate-400 mt-0.5">Servicios con platos pendientes</p>
+                        </div>
+                        <div id="kitchenSummary" class="p-4 space-y-3"></div>
+                    </aside>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FIXED MOBILE BOTTOM BAR -->
+    <div id="mobileOrderBar" class="fixed bottom-0 left-0 right-0 lg:hidden bg-white/90 backdrop-blur-xl border-t border-slate-200/50 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] z-40 safe-bottom">
+        <div class="px-5 pt-4 pb-4 flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Total</span>
+                <span class="text-2xl font-black text-slate-800 leading-none tracking-tight">S/ <span id="lblTotalMobile">0.00</span></span>
+            </div>
+            <button onclick="confirmarPedido()" class="w-1/2 xs:flex-1 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3.5 px-4 xs:px-6 rounded-[18px] shadow-lg shadow-guinda/30 active:scale-[0.96] transition-all flex items-center justify-center gap-2 border border-white/10">
+                <span class="tracking-wide text-xs xs:text-sm uppercase">Confirmar</span>
+                <span class="text-lg leading-none shrink-0">➜</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="mobileKitchenBar" class="hidden fixed bottom-0 left-0 right-0 lg:hidden bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-[0_-8px_30px_rgba(0,0,0,0.18)] z-40 safe-bottom">
+        <div class="px-5 pt-4 pb-4 flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">En cola</span>
+                <span class="text-2xl font-black text-white leading-none tracking-tight"><span id="kpiPlatosMobile">0</span> platos</span>
+            </div>
+            <button onclick="cambiarVista('pedidos')" class="w-1/2 xs:flex-1 bg-white text-slate-900 font-extrabold py-3.5 px-4 xs:px-6 rounded-[18px] active:scale-[0.96] transition-all flex items-center justify-center gap-2">
+                <span class="tracking-wide text-xs xs:text-sm uppercase">Volver</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== MODALS ===== -->
+    <!-- Modal Personalizar -->
+    <div id="modalPersonalizar" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] transition-opacity fade-animate" onclick="cerrarModal()"></div>
+        <div class="relative w-full md:w-[480px] bg-white rounded-[24px] sm:rounded-[32px] shadow-2xl overflow-hidden modal-animate flex flex-col h-auto max-h-[calc(100dvh-1.5rem)] border border-slate-100 z-10 max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw]">
+            <!-- Modal drag handle mobile -->
+            <div class="w-full flex justify-center pt-3 pb-2 md:hidden bg-white cursor-pointer" onclick="cerrarModal()">
+                <div class="w-10 h-1.5 bg-slate-200 rounded-full"></div>
+            </div>
+            
+            <div class="bg-white px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10 shrink-0">
+                <h3 id="modalTitulo" class="text-xl font-extrabold text-slate-800">Editar Plato</h3>
+                <button onclick="cerrarModal()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold hover:bg-slate-200 hover:text-slate-700 transition-colors active:scale-90">✕</button>
+            </div>
+            
+            <div class="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto overscroll-contain bg-slate-50/50 thin-scrollbar">
+                <div class="bg-white p-5 rounded-[20px] border border-slate-200 shadow-sm mb-4">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Instrucciones</label>
+                    <textarea id="txtModalNotas" rows="2" class="w-full border border-slate-200 rounded-xl focus:border-guinda focus:ring-4 focus:ring-guinda/10 resize-none bg-slate-50 p-3 text-sm font-medium outline-none placeholder-slate-400 transition-all" placeholder="Ej: Sin ají, bien cocido..."></textarea>
+                </div>
+                
+                <div class="mb-2"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Complementos</span></div>
+
+                <!-- Se llena dinámicamente según la categoría del plato, desde la
+                     tabla Extras en Supabase (ver app.js: renderExtrasModal) —
+                     ya no hay una lista fija en el HTML. -->
+                <div id="listaExtras" class="space-y-3"></div>
+                <p id="sinExtrasMsg" class="hidden text-xs font-semibold text-slate-400 text-center py-4">Este plato no tiene complementos disponibles.</p>
+            </div>
+            
+            <div class="px-4 py-4 sm:px-6 sm:py-5 bg-white border-t border-slate-100 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-3 safe-bottom shrink-0">
+                <div class="flex min-w-0 flex-col justify-center">
+                    <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-widest mb-0.5">Subtotal Plato</span>
+                    <span class="text-2xl sm:text-3xl font-black text-guinda leading-none whitespace-nowrap">S/ <span id="lblModalPrecio">0.00</span></span>
+                </div>
+                <button onclick="limpiarPersonalizacion()" class="h-11 px-3 sm:px-4 rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-wide active:scale-95 transition-all border border-slate-200 hover:border-red-200 flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap">
+                    🗑️ Limpiar
+                </button>
+                <button onclick="guardarCambiosModal()" class="col-span-2 w-full min-h-11 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3 px-4 sm:py-3.5 sm:px-5 rounded-2xl shadow-lg shadow-guinda/20 active:scale-95 transition-all text-xs sm:text-sm tracking-wide whitespace-nowrap">
+                    ACTUALIZAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar (Mesa Ocupada) -->
+    <div id="modalEditarPedido" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-opacity fade-animate" onclick="cerrarModalEditar()"></div>
+        <div class="relative w-full md:w-[580px] bg-white rounded-[24px] sm:rounded-[32px] shadow-2xl overflow-hidden modal-animate flex flex-col h-auto max-h-[calc(100dvh-1.5rem)] border border-slate-100 z-10 max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw]">
+            
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3 shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white/10 rounded-[16px] flex items-center justify-center text-white text-xl font-black border border-white/10 backdrop-blur-sm shadow-inner">🍽️</div>
+                    <div class="flex flex-col">
+                        <h3 id="editarPedidoTitulo" class="text-white font-extrabold text-lg leading-tight tracking-wide">Pedido #0</h3>
+                        <span id="editarPedidoSubtitulo" class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mt-0.5">Cargando...</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="editarPedidoBadge" class="hidden xs:inline-block text-[10px] font-black px-3 py-1.5 rounded-full bg-white/10 text-white border border-white/20 uppercase tracking-widest shadow-sm">PENDIENTE</span>
+                    <button onclick="cerrarModalEditar()" class="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center font-bold hover:bg-white/20 active:scale-90 transition-all backdrop-blur-sm">✕</button>
+                </div>
+            </div>
+
+            <div class="px-5 pt-4 pb-3 bg-white border-b border-slate-100 shrink-0">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">Sumar al pedido</p>
+                <div class="flex flex-col gap-2">
+                    <div class="flex gap-2">
+                        <select id="cboProductosEditar" onchange="onProductoSeleccionadoCambioEditar()" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl h-12 px-4 focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 pr-8 shadow-inner transition-all truncate">
+                            <option value="" disabled selected>Elige producto...</option>
+                        </select>
+                        <input type="number" id="cantEditar" value="1" min="1" class="w-[60px] shrink-0 text-center font-bold border border-slate-200 rounded-2xl h-12 text-sm focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner bg-slate-50">
+                    </div>
+                    <!-- Agregados tipo casilla según categoría (ej. Helado) -->
+                    <div id="extrasCheckboxEditar" class="flex flex-wrap gap-2 mt-2 empty:mt-0"></div>
+                    <button onclick="agregarPlatoEditar()" class="w-full h-12 bg-gradient-to-r from-amarillo to-amber-400 text-slate-900 font-extrabold rounded-2xl text-xs active:scale-95 transition-all shadow-md shadow-amarillo/20 border border-amber-300 tracking-wider uppercase">
+                        + Añadir al Pedido
+                    </button>
+                </div>
+                <label class="flex items-center w-fit gap-2 mt-3 text-[11px] font-bold text-slate-500 uppercase cursor-pointer hover:bg-slate-50 px-2 py-1 rounded transition-colors">
+                    <input type="checkbox" id="chkLlevarEditar" class="accent-amarillo w-4 h-4 rounded shadow-sm"> <span>Llevar extra</span>
+                </label>
+            </div>
+
+            <div class="overflow-y-auto overscroll-contain flex-1 min-h-0 thin-scrollbar bg-slate-50/50 relative">
+                <div id="editarListaCargando" class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-50/80 backdrop-blur-sm z-10">
+                    <div class="w-10 h-10 border-[4px] border-slate-200 border-t-guinda rounded-full animate-spin"></div>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Sincronizando...</span>
+                </div>
+                <div id="editarListaPlatos" class="hidden divide-y divide-slate-100/50"></div>
+            </div>
+
+            <div class="p-4 sm:p-5 bg-white border-t border-slate-100 shrink-0 safe-bottom">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-0.5">Total de la Cuenta</span>
+                        <span class="text-3xl font-black text-slate-800 tracking-tight">S/ <span id="editarTotal">0.00</span></span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="cerrarModalEditar()" class="w-1/3 min-w-0 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all">CERRAR</button>
+                    <button onclick="guardarCambiosEditar()" id="btnGuardarEditar" class="flex-1 min-w-0 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all shadow-lg shadow-guinda/30 border border-guinda-light/50 tracking-wide whitespace-nowrap">
+                        GUARDAR MESA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    
+    <script>
+        // Adjust elements logic if needed here for UI things, 
+        // mainly the existing logic is in app.js
+    </script>
+</body>
+</html>

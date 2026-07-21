@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - Melchorita</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        guinda: { DEFAULT: '#721422', light: '#8B2332', dark: '#5A101B', 50: '#FDF2F4' },
+                        amarillo: { DEFAULT: '#FFC400', hover: '#FFD54F', light: '#FFF3CC' }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-[100dvh] px-4">
+
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 w-full max-w-sm text-center">
+        <!-- Logo / Icon -->
+        <div class="w-16 h-16 bg-gradient-to-br from-guinda to-guinda-dark rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg shadow-guinda/20 mx-auto mb-6">
+            M
+        </div>
+        
+        <h1 class="text-2xl font-extrabold text-gray-900 mb-1">Melchorita</h1>
+        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-8">Acceso Interno</p>
+
+        <form id="frmLogin" class="space-y-4">
+            <div class="text-left">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Usuario del Mesero</label>
+                <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:bg-white focus-within:border-guinda focus-within:ring-2 focus-within:ring-guinda/10 transition-all">
+                    <span class="text-gray-400 mr-2">👤</span>
+                    <input type="text" id="txtUsername" required placeholder="Ej: juan" 
+                        class="bg-transparent border-none outline-none flex-1 text-sm font-semibold text-gray-800 placeholder-gray-300 w-full" autocomplete="username">
+                </div>
+            </div>
+
+            <div class="text-left">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Contraseña</label>
+                <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:bg-white focus-within:border-guinda focus-within:ring-2 focus-within:ring-guinda/10 transition-all">
+                    <span class="text-gray-400 mr-2">🔒</span>
+                    <input type="password" id="txtPassword" required placeholder="••••••••" 
+                        class="bg-transparent border-none outline-none flex-1 text-sm font-semibold text-gray-800 placeholder-gray-300 w-full" autocomplete="current-password">
+                </div>
+            </div>
+
+            <p id="lblError" class="text-xs font-bold text-red-500 hidden"></p>
+
+            <button type="submit" id="btnLogin" class="w-full bg-gradient-to-r from-guinda to-guinda-light text-white font-black py-3.5 rounded-xl text-sm shadow-lg shadow-guinda/30 active:scale-95 transition-all mt-4 flex justify-center items-center gap-2 hover:shadow-xl hover:shadow-guinda/40">
+                INICIAR SESIÓN <span class="text-lg leading-none">➜</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Cargar supabase client y auth handler -->
+    <script src="auth.js"></script>
+    <script>
+        document.getElementById('frmLogin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('txtUsername').value.trim();
+            const password = document.getElementById('txtPassword').value.trim();
+            
+            const btn = document.getElementById('btnLogin');
+            const errorLbl = document.getElementById('lblError');
+            
+            btn.innerHTML = '<span class="animate-spin inline-block">↻</span> Validando...';
+            btn.disabled = true;
+            errorLbl.classList.add('hidden');
+
+            try {
+                // Le forzamos el correo de la empresa para que usen un nombre simple
+                const correo_empresa = `${username}@melchorita.rest`;
+                
+                await iniciarSesion(correo_empresa, password);
+                
+                // Si llegamos aqui, es exito!
+                window.location.href = 'index.html';
+            } catch (error) {
+                errorLbl.innerText = error.message;
+                errorLbl.classList.remove('hidden');
+            } finally {
+                btn.innerHTML = 'INICIAR SESIÓN <span class="text-lg leading-none">➜</span>';
+                btn.disabled = false;
+            }
+        });
+        
+        // Verifica si ya está logueado al abrir la página y si lo está, lo envía al app
+        window.onload = async () => {
+            const hasSession = await checkSession();
+            if (hasSession) {
+                window.location.href = 'index.html';
+            }
+        };
+    </script>
+</body>
+</html>
