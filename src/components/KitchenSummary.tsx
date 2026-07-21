@@ -1,17 +1,18 @@
-import type { ColaCocinaItem } from '../types'
+import type { PedidoCola } from '../types'
 
 interface KitchenSummaryProps {
-  cola: ColaCocinaItem[]
+  pedidos: PedidoCola[]
 }
 
-export function KitchenSummary({ cola }: KitchenSummaryProps) {
-  if (cola.length === 0) {
+export function KitchenSummary({ pedidos }: KitchenSummaryProps) {
+  if (pedidos.length === 0) {
     return <div className="text-xs font-bold text-slate-400 p-4 text-center">Todo al dia.</div>
   }
 
-  const resumen = cola.reduce<Record<string, number>>((acc, item) => {
-    const key = item.pedido?.TipoServicio || 'MESA'
-    acc[key] = (acc[key] || 0) + (item.Cantidad || 0)
+  const resumen = pedidos.reduce<Record<string, number>>((acc, pedido) => {
+    const key = pedido.tipoServicio || 'MESA'
+    const cantidad = pedido.items.reduce((s, item) => s + (item.Cantidad || 0), 0)
+    acc[key] = (acc[key] || 0) + cantidad
     return acc
   }, {})
 

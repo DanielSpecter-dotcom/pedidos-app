@@ -27,6 +27,13 @@ export interface Mesero {
   Nombres: string
 }
 
+export interface Categoria {
+  CategoriaID: number
+  Nombre: string
+  Orden: number
+  RequierePreparacion: boolean
+}
+
 export interface Extra {
   ExtraID: number
   Nombre: string
@@ -105,10 +112,23 @@ export interface ColaCocinaItem {
   EsParaLlevar: boolean
   EstadoPlato: EstadoPlato
   FechaAgregado: string
-  posicion: number
   productoNombre: string
-  pedido: { PedidoID: number; TipoServicio: TipoServicio; EstadoPedido: EstadoPedido; FechaCreacion: string }
   mesas: string[]
+}
+
+// Un pedido completo agrupado en la cola de cocina (varios platos de un mismo
+// PedidoID), tal como se ve en el Monitor de Cocina de la app de escritorio:
+// una tarjeta por pedido, no una por plato.
+export interface PedidoCola {
+  pedidoId: number
+  posicion: number
+  tipoServicio: TipoServicio
+  labelUbicacion: string
+  clienteNombre: string
+  meseroNombre: string
+  horaPedido: string
+  minutosEspera: number
+  items: ColaCocinaItem[]
 }
 
 export interface PlatoEditar {

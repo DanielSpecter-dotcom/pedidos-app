@@ -5,15 +5,15 @@ import { useAppData } from '../contexts/AppDataContext'
 import { KitchenQueueGrid } from '../components/KitchenQueueGrid'
 import { KitchenSummary } from '../components/KitchenSummary'
 import { MobileKitchenBar } from '../components/MobileKitchenBar'
-import type { ColaCocinaItem } from '../types'
+import type { ColaCocinaItem, PedidoCola } from '../types'
 
 interface CocinaViewProps {
   onVolverAPedidos: () => void
 }
 
 export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
-  const { productos, refetchMesas } = useAppData()
-  const [colaCocina, setColaCocina] = useState<ColaCocinaItem[]>([])
+  const { productos, categorias, meseros, refetchMesas } = useAppData()
+  const [pedidosCola, setPedidosCola] = useState<PedidoCola[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(false)
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null)
@@ -29,16 +29,39 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
         .order('FechaAgregado', { ascending: true })
       if (errDetalles) throw errDetalles
 
-      const cola = detalles || []
+      // Solo platos que requieren preparación en cocina — Bebidas, Infusiones y
+      // Licores (RequierePreparacion = false en Categorias) no deben aparecer acá.
+      const categoriaPorProducto: Record<number, number | null> = {}
+      const requierePreparacionPorCategoria: Record<number, boolean> = {}
+      productos.forEach((p) => {
+        categoriaPorProducto[p.ProductoID] = p.CategoriaID
+      })
+      categorias.forEach((c) => {
+        requierePreparacionPorCategoria[c.CategoriaID] = c.RequierePreparacion
+      })
+
+      const cola = (detalles || []).filter((d) => {
+        const categoriaId = categoriaPorProducto[d.ProductoID]
+        if (categoriaId === undefined || categoriaId === null) return true
+        return requierePreparacionPorCategoria[categoriaId] !== false
+      })
+
       const pedidoIds = [...new Set(cola.map((d) => d.PedidoID).filter(Boolean))]
 
-      const pedidosMap: Record<number, ColaCocinaItem['pedido']> = {}
+      interface PedidoInfo {
+        PedidoID: number
+        TipoServicio: PedidoCola['tipoServicio']
+        ClienteID: number | null
+        MeseroID: number | null
+      }
+      const pedidosMap: Record<number, PedidoInfo> = {}
       const mesasPorPedido: Record<number, string[]> = {}
+      const clientesMap: Record<number, string> = {}
 
       if (pedidoIds.length > 0) {
         const { data: pedidos } = await supabase
           .from('Pedidos')
-          .select('PedidoID, TipoServicio, EstadoPedido, FechaCreacion')
+          .select('PedidoID, TipoServicio, EstadoPedido, ClienteID, MeseroID')
           .in('PedidoID', pedidoIds)
           .neq('EstadoPedido', 'ANULADO')
           .neq('EstadoPedido', 'PAGADO')
@@ -63,24 +86,65 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
           const numero = mesasMap[a.MesaID]
           if (numero) mesasPorPedido[a.PedidoID].push(numero)
         })
+
+        const clienteIds = [...new Set(Object.values(pedidosMap).map((p) => p.ClienteID).filter(Boolean))] as number[]
+        if (clienteIds.length > 0) {
+          const { data: clientesData } = await supabase.from('Clientes').select('ClienteID, NombreCompleto').in('ClienteID', clienteIds)
+          ;(clientesData || []).forEach((c) => {
+            clientesMap[c.ClienteID] = c.NombreCompleto
+          })
+        }
       }
 
       const productosMap: Record<number, string> = {}
       productos.forEach((p) => {
         productosMap[p.ProductoID] = p.Nombre
       })
+      const meserosMap: Record<number, string> = {}
+      meseros.forEach((m) => {
+        meserosMap[m.MeseroID] = m.Nombres
+      })
 
-      const colaEnriquecida: ColaCocinaItem[] = cola
+      const itemsEnriquecidos: ColaCocinaItem[] = cola
         .filter((d) => pedidosMap[d.PedidoID])
-        .map((d, index) => ({
+        .map((d) => ({
           ...d,
-          posicion: index + 1,
           productoNombre: productosMap[d.ProductoID] || `Producto #${d.ProductoID}`,
-          pedido: pedidosMap[d.PedidoID],
           mesas: mesasPorPedido[d.PedidoID] || [],
         }))
 
-      setColaCocina(colaEnriquecida)
+      const grupos = new Map<number, ColaCocinaItem[]>()
+      itemsEnriquecidos.forEach((item) => {
+        const lista = grupos.get(item.PedidoID) || []
+        lista.push(item)
+        grupos.set(item.PedidoID, lista)
+      })
+
+      const pedidosAgrupados: PedidoCola[] = Array.from(grupos.entries()).map(([pedidoId, items]) => {
+        const pedidoInfo = pedidosMap[pedidoId]
+        const mesas = mesasPorPedido[pedidoId] || []
+        const horaPedido = items[0].FechaAgregado
+        const minutosEspera = Math.max(0, Math.round((Date.now() - new Date(horaPedido).getTime()) / 60000))
+
+        return {
+          pedidoId,
+          posicion: 0,
+          tipoServicio: pedidoInfo?.TipoServicio || 'MESA',
+          labelUbicacion: mesas.length > 0 ? `Mesa ${mesas.join(' + ')}` : pedidoInfo?.TipoServicio || 'MESA',
+          clienteNombre: (pedidoInfo?.ClienteID && clientesMap[pedidoInfo.ClienteID]) || 'Cliente genérico',
+          meseroNombre: (pedidoInfo?.MeseroID && meserosMap[pedidoInfo.MeseroID]) || '—',
+          horaPedido,
+          minutosEspera,
+          items,
+        }
+      })
+
+      pedidosAgrupados.sort((a, b) => new Date(a.horaPedido).getTime() - new Date(b.horaPedido).getTime())
+      pedidosAgrupados.forEach((p, index) => {
+        p.posicion = index + 1
+      })
+
+      setPedidosCola(pedidosAgrupados)
       setUltimaSync(new Date())
     } catch (err) {
       console.error('Error cargando cocina:', err)
@@ -88,7 +152,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
     } finally {
       setCargando(false)
     }
-  }, [productos])
+  }, [productos, categorias, meseros])
 
   useEffect(() => {
     cargarVistaCocina()
@@ -107,37 +171,31 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
     }
   }, [cargarVistaCocina])
 
-  async function marcarPlatoServido(detalleId: number, pedidoId: number) {
-    if (!confirm('¿Marcar este plato como servido?')) return
+  async function marcarPedidoListo(pedidoId: number) {
+    if (!confirm('¿Marcar todo el pedido como listo?')) return
 
     try {
-      const { error: errUpdate } = await supabase.from('DetallePedido').update({ EstadoPlato: 'SERVIDO' }).eq('DetalleID', detalleId)
-      if (errUpdate) throw errUpdate
-
-      const { count, error: errCount } = await supabase
+      const { error: errUpdate } = await supabase
         .from('DetallePedido')
-        .select('DetalleID', { count: 'exact', head: true })
+        .update({ EstadoPlato: 'SERVIDO' })
         .eq('PedidoID', pedidoId)
         .eq('EstadoPlato', 'EN_COLA')
-      if (errCount) throw errCount
+      if (errUpdate) throw errUpdate
 
-      if ((count || 0) === 0) {
-        const { error: errPedido } = await supabase.from('Pedidos').update({ EstadoPedido: 'SERVIDO' }).eq('PedidoID', pedidoId)
-        if (errPedido) throw errPedido
-      }
+      const { error: errPedido } = await supabase.from('Pedidos').update({ EstadoPedido: 'SERVIDO' }).eq('PedidoID', pedidoId)
+      if (errPedido) throw errPedido
 
       await cargarVistaCocina()
       await refetchMesas()
     } catch (err) {
-      console.error('Error marcando servido:', err)
-      alert('No se pudo marcar como servido: ' + (err instanceof Error ? err.message : String(err)))
+      console.error('Error marcando listo:', err)
+      alert('No se pudo marcar el pedido como listo: ' + (err instanceof Error ? err.message : String(err)))
     }
   }
 
-  const platosCount = colaCocina.reduce((sum, item) => sum + (item.Cantidad || 0), 0)
-  const pedidosCount = new Set(colaCocina.map((item) => item.PedidoID)).size
-  const oldestDate = colaCocina[0]?.FechaAgregado ? new Date(colaCocina[0].FechaAgregado) : null
-  const waitingMinutes = oldestDate ? Math.max(0, Math.round((Date.now() - oldestDate.getTime()) / 60000)) : 0
+  const platosCount = pedidosCola.reduce((sum, p) => sum + p.items.reduce((s, item) => s + (item.Cantidad || 0), 0), 0)
+  const pedidosCount = pedidosCola.length
+  const waitingMinutes = pedidosCola[0]?.minutosEspera ?? 0
 
   return (
     <section className="h-auto lg:h-full w-full p-4 sm:p-6 lg:overflow-hidden">
@@ -200,7 +258,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
                   <span className="text-xs font-bold">No se pudo cargar la cola de cocina.</span>
                 </div>
               ) : (
-                <KitchenQueueGrid cola={colaCocina} onMarcarServido={marcarPlatoServido} />
+                <KitchenQueueGrid pedidos={pedidosCola} onMarcarListo={marcarPedidoListo} />
               )}
             </div>
           </div>
@@ -211,7 +269,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
               <p className="text-[11px] font-bold text-slate-400 mt-0.5">Servicios con platos pendientes</p>
             </div>
             <div className="p-4 space-y-3">
-              <KitchenSummary cola={colaCocina} />
+              <KitchenSummary pedidos={pedidosCola} />
             </div>
           </aside>
         </div>

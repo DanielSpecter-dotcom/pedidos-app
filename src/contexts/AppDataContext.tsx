@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
-import type { Producto, Mesa, Mesero, Extra } from '../types'
+import type { Producto, Mesa, Mesero, Extra, Categoria } from '../types'
 
 interface AppDataContextValue {
   productos: Producto[]
   mesas: Mesa[]
   meseros: Mesero[]
   extras: Extra[]
+  categorias: Categoria[]
   loading: boolean
   error: string | null
   refetchMesas: () => Promise<void>
@@ -20,6 +21,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [mesas, setMesas] = useState<Mesa[]>([])
   const [meseros, setMeseros] = useState<Mesero[]>([])
   const [extras, setExtras] = useState<Extra[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,6 +59,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           .order('MeseroID', { ascending: true })
         if (errMeseros) throw errMeseros
 
+        const { data: categoriasData, error: errCategorias } = await supabase
+          .from('Categorias')
+          .select('*')
+          .order('Orden', { ascending: true })
+        if (errCategorias) throw errCategorias
+
         // Extras: tabla nueva, un try/catch propio para que si fallara no
         // tumbe el resto del arranque (mismo criterio que app.js).
         let extrasData: Extra[] = []
@@ -76,6 +84,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setProductos(prodData ?? [])
           setMesas(mesasData ?? [])
           setMeseros(meserosData ?? [])
+          setCategorias(categoriasData ?? [])
           setExtras(extrasData)
         }
       } catch (err) {
@@ -110,7 +119,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [refetchMesas])
 
   return (
-    <AppDataContext.Provider value={{ productos, mesas, meseros, extras, loading, error, refetchMesas }}>
+    <AppDataContext.Provider value={{ productos, mesas, meseros, extras, categorias, loading, error, refetchMesas }}>
       {children}
     </AppDataContext.Provider>
   )

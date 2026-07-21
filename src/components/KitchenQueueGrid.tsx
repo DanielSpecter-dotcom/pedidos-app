@@ -1,12 +1,13 @@
-import type { ColaCocinaItem } from '../types'
+import { useState } from 'react'
+import type { PedidoCola } from '../types'
 
 interface KitchenQueueGridProps {
-  cola: ColaCocinaItem[]
-  onMarcarServido: (detalleId: number, pedidoId: number) => void
+  pedidos: PedidoCola[]
+  onMarcarListo: (pedidoId: number) => void
 }
 
-export function KitchenQueueGrid({ cola, onMarcarServido }: KitchenQueueGridProps) {
-  if (cola.length === 0) {
+export function KitchenQueueGrid({ pedidos, onMarcarListo }: KitchenQueueGridProps) {
+  if (pedidos.length === 0) {
     return (
       <div className="col-span-full min-h-[300px] flex flex-col items-center justify-center text-slate-300 select-none">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-3 stroke-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -19,55 +20,77 @@ export function KitchenQueueGrid({ cola, onMarcarServido }: KitchenQueueGridProp
 
   return (
     <>
-      {cola.map((item) => {
-        const servicio = item.pedido?.TipoServicio || 'MESA'
-        const labelUbicacion = item.mesas.length > 0 ? `Mesa ${item.mesas.join(' + ')}` : servicio
-        const minutes = item.FechaAgregado ? Math.max(0, Math.round((Date.now() - new Date(item.FechaAgregado).getTime()) / 60000)) : 0
-        const urgent = minutes >= 15
-
-        return (
-          <article
-            key={item.DetalleID}
-            className={`rounded-[20px] border ${urgent ? 'border-red-200 bg-red-50/60' : 'border-slate-200 bg-white'} shadow-soft overflow-hidden`}
-          >
-            <div className="p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-slate-900 text-white">#{item.posicion}</span>
-                    <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
-                      Pedido {item.PedidoID}
-                    </span>
-                    {item.EsParaLlevar && (
-                      <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-200">LLEVAR</span>
-                    )}
-                  </div>
-                  <h4 className="text-lg font-black text-slate-900 leading-tight mt-3">{item.productoNombre}</h4>
-                  <p className="text-xs font-bold text-slate-500 mt-1">{labelUbicacion}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-3xl font-black text-slate-900 leading-none">{item.Cantidad}</div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">cant.</div>
-                </div>
-              </div>
-              {item.Notas && (
-                <p className="mt-3 text-xs font-bold text-guinda bg-guinda/5 border border-guinda/10 rounded-xl px-3 py-2">{item.Notas}</p>
-              )}
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <span className={`text-[11px] font-black ${urgent ? 'text-red-600' : 'text-slate-400'} uppercase tracking-widest`}>
-                  {minutes} min
-                </span>
-                <button
-                  onClick={() => onMarcarServido(item.DetalleID, item.PedidoID)}
-                  className="h-11 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  Servido
-                </button>
-              </div>
-            </div>
-          </article>
-        )
-      })}
+      {pedidos.map((pedido) => (
+        <PedidoColaCard key={pedido.pedidoId} pedido={pedido} onMarcarListo={onMarcarListo} />
+      ))}
     </>
+  )
+}
+
+function PedidoColaCard({ pedido, onMarcarListo }: { pedido: PedidoCola; onMarcarListo: (pedidoId: number) => void }) {
+  const [marcados, setMarcados] = useState<Set<number>>(new Set())
+  const urgent = pedido.minutosEspera >= 15
+
+  function toggleMarcado(detalleId: number) {
+    setMarcados((prev) => {
+      const next = new Set(prev)
+      if (next.has(detalleId)) next.delete(detalleId)
+      else next.add(detalleId)
+      return next
+    })
+  }
+
+  return (
+    <article className={`rounded-[20px] border ${urgent ? 'border-red-300' : 'border-slate-200'} shadow-soft overflow-hidden bg-white flex flex-col`}>
+      <div className={`px-4 py-3 flex items-center justify-between gap-3 text-white ${urgent ? 'bg-red-600' : 'bg-guinda'}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-black/20">#{pedido.posicion}</span>
+          <span className="font-black text-lg leading-none uppercase">{pedido.labelUbicacion}</span>
+          {pedido.items.some((i) => i.EsParaLlevar) && (
+            <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-400 text-slate-900">LLEVAR</span>
+          )}
+        </div>
+        <span className={`text-[11px] font-black px-2 py-1 rounded-lg ${urgent ? 'bg-black/20' : 'bg-black/10'}`}>
+          {pedido.minutosEspera} min
+        </span>
+      </div>
+
+      <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2 text-xs">
+        <span className="font-bold text-slate-600 truncate">👤 {pedido.clienteNombre}</span>
+        <span className="font-bold text-slate-400 truncate">🤵 {pedido.meseroNombre}</span>
+      </div>
+
+      <div className="flex-1 divide-y divide-slate-100">
+        {pedido.items.map((item) => (
+          <label
+            key={item.DetalleID}
+            className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors select-none"
+          >
+            <span className="bg-slate-900 text-white font-bold text-xs w-6 h-6 rounded-md shrink-0 flex items-center justify-center">
+              {item.Cantidad}
+            </span>
+            <div className="flex-1 min-w-0">
+              <span className={`font-bold text-sm text-slate-800 ${marcados.has(item.DetalleID) ? 'line-through text-slate-400' : ''}`}>
+                {item.productoNombre}
+              </span>
+              {item.Notas && <div className="text-[10px] text-guinda font-medium italic">📝 {item.Notas}</div>}
+            </div>
+            <input
+              type="checkbox"
+              checked={marcados.has(item.DetalleID)}
+              onChange={() => toggleMarcado(item.DetalleID)}
+              className="accent-emerald-600 w-4 h-4 rounded shrink-0"
+            />
+          </label>
+        ))}
+      </div>
+
+      <button
+        onClick={() => onMarcarListo(pedido.pedidoId)}
+        className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-black uppercase tracking-wide active:scale-[0.98] transition-all shrink-0"
+      >
+        Marcar Listo ✓
+      </button>
+    </article>
   )
 }
