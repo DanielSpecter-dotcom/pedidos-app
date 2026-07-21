@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { habilitarSonido, reproducirSonidoAviso } from '../lib/sound'
 
 const CANAL_AVISOS = 'avisos-mesero'
 const EVENTO_PEDIDO_LISTO = 'pedido-listo'
@@ -28,6 +29,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const channel = supabase
       .channel(CANAL_AVISOS)
       .on('broadcast', { event: EVENTO_PEDIDO_LISTO }, ({ payload }) => {
+        reproducirSonidoAviso()
         setAvisos((prev) => [
           ...prev,
           {
@@ -46,6 +48,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel)
       channelRef.current = null
     }
+  }, [])
+
+  // Desbloquea el AudioContext en la primera interacción real del usuario,
+  // para que el navegador no bloquee el sonido cuando llegue un aviso.
+  useEffect(() => {
+    function onPrimeraInteraccion() {
+      habilitarSonido()
+      document.removeEventListener('pointerdown', onPrimeraInteraccion)
+    }
+    document.addEventListener('pointerdown', onPrimeraInteraccion)
+    return () => document.removeEventListener('pointerdown', onPrimeraInteraccion)
   }, [])
 
   function enviarAvisoMesero(data: { pedidoId: number; labelUbicacion: string; clienteNombre: string }) {
