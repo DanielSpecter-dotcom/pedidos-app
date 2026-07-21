@@ -5,7 +5,7 @@
 > eliminados, todo commiteado en git). Falta que el usuario pruebe a mano los
 > flujos que escriben de verdad en Supabase (confirmar pedido, guardar edición de
 > pedido, marcar plato servido — ver checklist de la Fase 10) y la Fase 11
-> (deploy a Vercel), que requiere su cuenta.
+> (deploy a Vercel) — el usuario decidió posponerla para una sesión futura.
 
 ## Contexto
 
