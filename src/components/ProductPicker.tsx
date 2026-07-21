@@ -3,6 +3,7 @@ import { useAppData } from '../contexts/AppDataContext'
 import { useCart } from '../contexts/CartContext'
 import { extrasPorCategoria } from '../lib/extras'
 import { ExtrasCheckboxList } from './ExtrasCheckboxList'
+import { ProductoSearchSelect } from './ProductoSearchSelect'
 
 export function ProductPicker() {
   const { productos, extras } = useAppData()
@@ -45,23 +46,16 @@ export function ProductPicker() {
   return (
     <div className="bg-white rounded-[24px] shadow-premium p-4 sm:p-5 border border-slate-100 shrink-0 z-20 sticky lg:static top-28 lg:top-0">
       <div className="flex gap-2.5 w-full mb-3">
-        <select
+        <ProductoSearchSelect
+          productos={productos}
           value={productoId}
-          onChange={(e) => {
-            setProductoId(e.target.value)
+          onChange={(id) => {
+            setProductoId(id)
             setExtrasSeleccionados(new Set())
           }}
-          className="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl h-12 px-4 focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner truncate pr-10 transition-all"
-        >
-          <option value="" disabled>
-            🔍 Buscar un plato...
-          </option>
-          {productos.map((p) => (
-            <option key={p.ProductoID} value={p.ProductoID}>
-              {p.Nombre} - S/ {p.Precio.toFixed(2)}
-            </option>
-          ))}
-        </select>
+          placeholder="🔍 Buscar un plato..."
+          className="flex-1"
+        />
         <input
           type="number"
           min={1}

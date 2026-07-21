@@ -4,6 +4,7 @@ import { useAppData } from '../contexts/AppDataContext'
 import { extrasPorCategoria } from '../lib/extras'
 import { ExtrasCheckboxList } from './ExtrasCheckboxList'
 import { PersonalizeModal } from './PersonalizeModal'
+import { ProductoSearchSelect } from './ProductoSearchSelect'
 import type { EstadoPedido, PlatoEditar } from '../types'
 
 interface EditarPedidoModalProps {
@@ -304,23 +305,16 @@ export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: E
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">Sumar al pedido</p>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
-              <select
+              <ProductoSearchSelect
+                productos={productos}
                 value={productoId}
-                onChange={(e) => {
-                  setProductoId(e.target.value)
+                onChange={(id) => {
+                  setProductoId(id)
                   setExtrasSeleccionados(new Set())
                 }}
-                className="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl h-12 px-4 focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 pr-8 shadow-inner transition-all truncate"
-              >
-                <option value="" disabled>
-                  Elige producto...
-                </option>
-                {productos.map((p) => (
-                  <option key={p.ProductoID} value={p.ProductoID}>
-                    {p.Nombre} - S/ {p.Precio.toFixed(2)}
-                  </option>
-                ))}
-              </select>
+                placeholder="Elige producto..."
+                className="flex-1"
+              />
               <input
                 type="number"
                 min={1}
