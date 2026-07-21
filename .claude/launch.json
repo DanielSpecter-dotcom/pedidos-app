@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "pedidos-web-new",
+      "name": "pedidos-web",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["--cwd", "web-new", "dev"],
+      "runtimeArgs": ["dev"],
       "port": 5173
     }
   ]
