@@ -60,6 +60,10 @@ export interface Pedido {
   TipoServicio: TipoServicio
   EstadoPedido: EstadoPedido
   FechaCreacion: string
+  // Nombre suelto para identificar el pedido sin crear un Cliente real en la
+  // base (ver CartContext.confirmarPedido) — mismo campo que usa la app de
+  // escritorio (db/melchorita/01_esquema.sql). null cuando no aplica.
+  NombreDestinatario: string | null
 }
 
 export interface DetallePedido {

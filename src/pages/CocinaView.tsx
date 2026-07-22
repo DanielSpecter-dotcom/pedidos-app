@@ -74,6 +74,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
         TipoServicio: PedidoCola['tipoServicio']
         ClienteID: number | null
         MeseroID: number | null
+        NombreDestinatario: string | null
       }
       const pedidosMap: Record<number, PedidoInfo> = {}
       const mesasPorPedido: Record<number, string[]> = {}
@@ -82,7 +83,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
       if (pedidoIds.length > 0) {
         const { data: pedidos } = await supabase
           .from('Pedidos')
-          .select('PedidoID, TipoServicio, EstadoPedido, ClienteID, MeseroID')
+          .select('PedidoID, TipoServicio, EstadoPedido, ClienteID, MeseroID, NombreDestinatario')
           .in('PedidoID', pedidoIds)
           .neq('EstadoPedido', 'ANULADO')
           .neq('EstadoPedido', 'PAGADO')
@@ -152,7 +153,13 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
           posicion: 0,
           tipoServicio: pedidoInfo?.TipoServicio || 'MESA',
           labelUbicacion: mesas.length > 0 ? `Mesa ${mesas.join(' + ')}` : pedidoInfo?.TipoServicio || 'MESA',
-          clienteNombre: (pedidoInfo?.ClienteID && clientesMap[pedidoInfo.ClienteID]) || 'Cliente genérico',
+          // Si al tomar el pedido se escribió un nombre sin DNI, queda en
+          // NombreDestinatario en vez de crear un Cliente (ver
+          // CartContext.confirmarPedido) — se prioriza acá.
+          clienteNombre:
+            pedidoInfo?.NombreDestinatario ||
+            (pedidoInfo?.ClienteID && clientesMap[pedidoInfo.ClienteID]) ||
+            'Cliente genérico',
           meseroNombre: (pedidoInfo?.MeseroID && meserosMap[pedidoInfo.MeseroID]) || '—',
           horaPedido,
           minutosEspera,

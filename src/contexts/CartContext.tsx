@@ -126,25 +126,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     throw new Error('Cliente genérico no encontrado')
   }
 
-  async function obtenerIdCliente(dniValue: string, nombre: string): Promise<number> {
-    if (!nombre || nombre.trim() === '' || nombre.trim() === 'CLIENTE GENÉRICO') {
-      return obtenerIdClienteGenerico()
+  // El DNI es opcional: solo se busca/crea un Cliente real en la base cuando
+  // hay DNI Y nombre (para reconocerlo si vuelve). Sin DNI, esta función
+  // devuelve null y quien la llama debe usar el cliente genérico + guardar el
+  // nombre suelto en NombreDestinatario — así un comensal ocasional que no
+  // deja documento no genera un registro de Cliente por cada pedido.
+  async function obtenerIdClienteVinculado(dniValue: string, nombre: string): Promise<number | null> {
+    const dniNormalizado = dniValue.trim()
+    const nombreNormalizado = nombre.trim().toUpperCase()
+    if (dniNormalizado.length < 8 || !nombreNormalizado || nombreNormalizado === 'CLIENTE GENÉRICO') {
+      return null
     }
-    const nombreNormalizado = nombre.toUpperCase().trim()
-    const dniNormalizado = dniValue ? dniValue.trim() : null
 
-    if (dniNormalizado && dniNormalizado.length >= 8) {
-      const { data: existente } = await supabase
-        .from('Clientes')
-        .select('ClienteID')
-        .eq('NumeroDocumento', dniNormalizado)
-        .single()
-      if (existente) return existente.ClienteID
-    }
+    const { data: existente } = await supabase
+      .from('Clientes')
+      .select('ClienteID')
+      .eq('NumeroDocumento', dniNormalizado)
+      .single()
+    if (existente) return existente.ClienteID
 
     const { data: nuevo, error } = await supabase
       .from('Clientes')
-      .insert([{ NombreCompleto: nombreNormalizado, NumeroDocumento: dniNormalizado || null }])
+      .insert([{ NombreCompleto: nombreNormalizado, NumeroDocumento: dniNormalizado }])
       .select('ClienteID')
       .single()
     if (error) throw new Error('No se pudo registrar el cliente.')
@@ -172,23 +175,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setGuardando(true)
     try {
       let idClienteFinal: number
+      // Nombre suelto para identificar el pedido sin Cliente vinculado (ver
+      // obtenerIdClienteVinculado) — de acá lo leen Caja y Cocina en la app
+      // de escritorio, y CocinaView acá mismo.
+      let nombreParaMostrar: string | null = null
+
       if (tipoServicio === 'DELIVERY') {
         const nombreDelivery = delivery.nombre.trim()
-        if (dni.trim().length >= 8) {
-          idClienteFinal = await obtenerIdCliente(dni, nombreDelivery)
-        } else if (nombreDelivery) {
-          const { data: nuevo, error } = await supabase
-            .from('Clientes')
-            .insert([{ NombreCompleto: nombreDelivery.toUpperCase() }])
-            .select('ClienteID')
-            .single()
-          if (error) throw new Error('No se pudo registrar el cliente.')
-          idClienteFinal = nuevo.ClienteID
+        const idVinculado = await obtenerIdClienteVinculado(dni, nombreDelivery)
+        if (idVinculado !== null) {
+          idClienteFinal = idVinculado
         } else {
           idClienteFinal = await obtenerIdClienteGenerico()
+          nombreParaMostrar = nombreDelivery || null
         }
       } else {
-        idClienteFinal = await obtenerIdCliente(dni, nombreCliente)
+        const nombre = nombreCliente.trim()
+        const idVinculado = await obtenerIdClienteVinculado(dni, nombre)
+        if (idVinculado !== null) {
+          idClienteFinal = idVinculado
+        } else {
+          idClienteFinal = await obtenerIdClienteGenerico()
+          nombreParaMostrar = nombre && nombre.toUpperCase() !== 'CLIENTE GENÉRICO' ? nombre : null
+        }
       }
 
       const { data: pedidoData, error: pedidoError } = await supabase
@@ -201,6 +210,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             TipoServicio: tipoServicio,
             EstadoPedido: 'PENDIENTE',
             FechaCreacion: new Date().toISOString(),
+            NombreDestinatario: nombreParaMostrar,
           },
         ])
         .select()

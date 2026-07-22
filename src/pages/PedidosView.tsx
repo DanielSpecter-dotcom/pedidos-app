@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ServiceTypeTabs } from '../components/ServiceTypeTabs'
 import { MesaGrid } from '../components/MesaGrid'
 import { DeliveryPanel } from '../components/DeliveryPanel'
@@ -8,8 +8,10 @@ import { CartTable } from '../components/CartTable'
 import { MobileOrderBar } from '../components/MobileOrderBar'
 import { PersonalizeModal } from '../components/PersonalizeModal'
 import { EditarPedidoModal } from '../components/EditarPedidoModal'
+import { PedidosActivosModal } from '../components/PedidosActivosModal'
 import { useCart } from '../contexts/CartContext'
 import { useAppData } from '../contexts/AppDataContext'
+import { supabase } from '../lib/supabaseClient'
 
 export function PedidosView() {
   const { carrito, tipoServicio, total, guardando, confirmarPedido, updateCartItem } = useCart()
@@ -18,11 +20,49 @@ export function PedidosView() {
   const itemPersonalizando = personalizeIndex !== null ? carrito[personalizeIndex] : null
   const [mesaEditando, setMesaEditando] = useState<{ mesaId: number; numeroMesa: string } | null>(null)
 
+  // Para Llevar/Recoger/Delivery no hay mesa para reabrir el pedido — ver
+  // PedidosActivosModal.
+  const [mostrarPedidosActivos, setMostrarPedidosActivos] = useState(false)
+  const [pedidoEditandoDirecto, setPedidoEditandoDirecto] = useState<number | null>(null)
+  const [pedidosActivosCount, setPedidosActivosCount] = useState(0)
+
+  async function refetchPedidosActivosCount() {
+    const { count } = await supabase
+      .from('Pedidos')
+      .select('PedidoID', { count: 'exact', head: true })
+      .neq('TipoServicio', 'MESA')
+      .neq('EstadoPedido', 'PAGADO')
+      .neq('EstadoPedido', 'ANULADO')
+    setPedidosActivosCount(count ?? 0)
+  }
+
+  useEffect(() => {
+    refetchPedidosActivosCount()
+  }, [])
+
+  async function handleConfirmarPedido() {
+    await confirmarPedido()
+    refetchPedidosActivosCount()
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 h-auto lg:h-full lg:p-6 w-full mobile-flow">
         {/* LEFT PANEL: Selections & Tables */}
         <div className="flex flex-col lg:col-span-7 xl:col-span-8 h-auto lg:h-full w-full max-w-full overflow-hidden">
+          <div className="flex justify-end px-5 lg:px-0 pt-3 lg:pt-0 lg:pb-1">
+            <button
+              onClick={() => setMostrarPedidosActivos(true)}
+              className="relative shrink-0 flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2 text-xs font-bold text-guinda shadow-soft hover:border-guinda/40 active:scale-95 transition-all"
+            >
+              📋 Pedidos Activos
+              {pedidosActivosCount > 0 && (
+                <span className="bg-guinda text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {pedidosActivosCount}
+                </span>
+              )}
+            </button>
+          </div>
           <ServiceTypeTabs />
 
           {tipoServicio === 'MESA' && (
@@ -44,7 +84,7 @@ export function PedidosView() {
                 <div className="text-3xl font-black text-white leading-none">S/ {total.toFixed(2)}</div>
               </div>
               <button
-                onClick={() => confirmarPedido()}
+                onClick={() => handleConfirmarPedido()}
                 disabled={guardando}
                 className="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-extrabold py-4 px-8 rounded-2xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-3 hover:shadow-xl hover:scale-[1.02] border border-emerald-400/50 disabled:opacity-70"
               >
@@ -74,6 +114,24 @@ export function PedidosView() {
           numeroMesa={mesaEditando.numeroMesa}
           onClose={() => setMesaEditando(null)}
           onGuardado={() => refetchMesas()}
+        />
+      )}
+
+      {mostrarPedidosActivos && (
+        <PedidosActivosModal
+          onClose={() => setMostrarPedidosActivos(false)}
+          onEditar={(pedidoId) => {
+            setPedidoEditandoDirecto(pedidoId)
+            setMostrarPedidosActivos(false)
+          }}
+        />
+      )}
+
+      {pedidoEditandoDirecto !== null && (
+        <EditarPedidoModal
+          pedidoId={pedidoEditandoDirecto}
+          onClose={() => setPedidoEditandoDirecto(null)}
+          onGuardado={() => refetchPedidosActivosCount()}
         />
       )}
     </>

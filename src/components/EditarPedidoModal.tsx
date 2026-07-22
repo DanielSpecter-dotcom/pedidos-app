@@ -8,8 +8,12 @@ import { ProductoSearchSelect } from './ProductoSearchSelect'
 import type { EstadoPedido, PlatoEditar } from '../types'
 
 interface EditarPedidoModalProps {
-  mesaId: number
-  numeroMesa: string
+  // Apertura desde el mapa de mesas (MESA): resuelve el pedido buscando en
+  // AsignacionMesas. Apertura directa (Llevar/Recoger/Delivery, ver
+  // PedidosActivosModal): pasa pedidoId y se salta esa búsqueda.
+  pedidoId?: number
+  mesaId?: number
+  numeroMesa?: string
   onClose: () => void
   onGuardado: () => void
 }
@@ -17,10 +21,10 @@ interface EditarPedidoModalProps {
 interface PedidoEditando {
   pedidoID: number
   estadoPedido: EstadoPedido
-  labelMesas: string
+  labelUbicacion: string
 }
 
-export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: EditarPedidoModalProps) {
+export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGuardado }: EditarPedidoModalProps) {
   const { productos, extras } = useAppData()
 
   const [cargando, setCargando] = useState(true)
@@ -51,45 +55,77 @@ export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: E
       setCargando(true)
       setError(null)
       try {
-        const { data: asigs } = await supabase.from('AsignacionMesas').select('PedidoID').eq('MesaID', mesaId)
-        if (!asigs || asigs.length === 0) {
-          if (!cancelado) setError('No se encontró pedido activo para esta mesa.')
-          return
-        }
+        let pedidoIdActual: number
 
-        const pedidoIDs = asigs.map((a) => a.PedidoID)
-
-        const { data: pedidos } = await supabase
-          .from('Pedidos')
-          .select('*')
-          .in('PedidoID', pedidoIDs)
-          .neq('EstadoPedido', 'ANULADO')
-          .neq('EstadoPedido', 'PAGADO')
-          .order('FechaCreacion', { ascending: false })
-
-        if (!pedidos || pedidos.length === 0) {
-          if (!cancelado) setError('No hay pedidos activos para esta mesa.')
-          return
-        }
-
-        const pedidoActual = pedidos[0]
-
-        const { data: todasAsigs } = await supabase
-          .from('AsignacionMesas')
-          .select('MesaID')
-          .eq('PedidoID', pedidoActual.PedidoID)
-
-        let labelMesas = `Mesa ${numeroMesa}`
-        if (todasAsigs && todasAsigs.length > 0) {
-          const mesaIdsDelPedido = todasAsigs.map((a) => a.MesaID)
-          const { data: mesasData } = await supabase
-            .from('Mesas')
-            .select('NumeroMesa')
-            .in('MesaID', mesaIdsDelPedido)
-            .order('NumeroMesa', { ascending: true })
-          if (mesasData && mesasData.length > 0) {
-            labelMesas = 'Mesa ' + mesasData.map((m) => m.NumeroMesa).join(' + ')
+        if (pedidoId !== undefined) {
+          pedidoIdActual = pedidoId
+        } else if (mesaId !== undefined) {
+          const { data: asigs } = await supabase.from('AsignacionMesas').select('PedidoID').eq('MesaID', mesaId)
+          if (!asigs || asigs.length === 0) {
+            if (!cancelado) setError('No se encontró pedido activo para esta mesa.')
+            return
           }
+
+          const pedidoIDs = asigs.map((a) => a.PedidoID)
+
+          const { data: pedidosMesa } = await supabase
+            .from('Pedidos')
+            .select('PedidoID')
+            .in('PedidoID', pedidoIDs)
+            .neq('EstadoPedido', 'ANULADO')
+            .neq('EstadoPedido', 'PAGADO')
+            .order('FechaCreacion', { ascending: false })
+
+          if (!pedidosMesa || pedidosMesa.length === 0) {
+            if (!cancelado) setError('No hay pedidos activos para esta mesa.')
+            return
+          }
+
+          pedidoIdActual = pedidosMesa[0].PedidoID
+        } else {
+          if (!cancelado) setError('No se especificó qué pedido editar.')
+          return
+        }
+
+        const { data: pedidoActual } = await supabase.from('Pedidos').select('*').eq('PedidoID', pedidoIdActual).single()
+
+        if (!pedidoActual) {
+          if (!cancelado) setError('No se encontró el pedido.')
+          return
+        }
+
+        let labelUbicacion: string
+        if (pedidoActual.TipoServicio === 'MESA') {
+          const { data: todasAsigs } = await supabase
+            .from('AsignacionMesas')
+            .select('MesaID')
+            .eq('PedidoID', pedidoActual.PedidoID)
+
+          labelUbicacion = numeroMesa ? `Mesa ${numeroMesa}` : 'Mesa'
+          if (todasAsigs && todasAsigs.length > 0) {
+            const mesaIdsDelPedido = todasAsigs.map((a) => a.MesaID)
+            const { data: mesasData } = await supabase
+              .from('Mesas')
+              .select('NumeroMesa')
+              .in('MesaID', mesaIdsDelPedido)
+              .order('NumeroMesa', { ascending: true })
+            if (mesasData && mesasData.length > 0) {
+              labelUbicacion = 'Mesa ' + mesasData.map((m) => m.NumeroMesa).join(' + ')
+            }
+          }
+        } else {
+          // Llevar/Recoger/Delivery: sin mesa, se identifica por tipo +
+          // el nombre suelto guardado sin crear un Cliente (ver
+          // CartContext.confirmarPedido).
+          const tipoLabel =
+            pedidoActual.TipoServicio === 'LLEVAR'
+              ? '🥡 Para Llevar'
+              : pedidoActual.TipoServicio === 'RECOGER'
+                ? '🎒 Para Recoger'
+                : pedidoActual.TipoServicio === 'DELIVERY'
+                  ? '🛵 Delivery'
+                  : pedidoActual.TipoServicio
+          labelUbicacion = pedidoActual.NombreDestinatario ? `${tipoLabel} — ${pedidoActual.NombreDestinatario}` : tipoLabel
         }
 
         const { data: detalles } = await supabase
@@ -123,7 +159,7 @@ export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: E
         }))
 
         if (!cancelado) {
-          setPedido({ pedidoID: pedidoActual.PedidoID, estadoPedido: pedidoActual.EstadoPedido, labelMesas })
+          setPedido({ pedidoID: pedidoActual.PedidoID, estadoPedido: pedidoActual.EstadoPedido, labelUbicacion })
           setPlatos(platosOrdenados)
         }
       } catch (err) {
@@ -137,7 +173,7 @@ export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: E
     return () => {
       cancelado = true
     }
-  }, [mesaId, numeroMesa, productos])
+  }, [pedidoId, mesaId, numeroMesa, productos])
 
   function toggleExtra(extraId: number, marcado: boolean) {
     setExtrasSeleccionados((prev) => {
@@ -273,10 +309,10 @@ export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: E
             </div>
             <div className="flex flex-col">
               <h3 className="text-white font-extrabold text-lg leading-tight tracking-wide">
-                {pedido ? `Pedido #${pedido.pedidoID}` : `Mesa ${numeroMesa}`}
+                {pedido ? `Pedido #${pedido.pedidoID}` : numeroMesa ? `Mesa ${numeroMesa}` : 'Cargando...'}
               </h3>
               <span className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mt-0.5">
-                {cargando ? 'Cargando pedido...' : pedido ? pedido.labelMesas : '—'}
+                {cargando ? 'Cargando pedido...' : pedido ? pedido.labelUbicacion : '—'}
               </span>
             </div>
           </div>
@@ -439,7 +475,7 @@ export function EditarPedidoModal({ mesaId, numeroMesa, onClose, onGuardado }: E
               disabled={guardando || cargando || !!error}
               className="flex-1 min-w-0 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all shadow-lg shadow-guinda/30 border border-guinda-light/50 tracking-wide whitespace-nowrap disabled:opacity-70"
             >
-              {guardando ? 'Guardando...' : 'GUARDAR MESA'}
+              {guardando ? 'Guardando...' : 'GUARDAR CAMBIOS'}
             </button>
           </div>
         </div>

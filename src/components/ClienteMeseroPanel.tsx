@@ -42,7 +42,7 @@ export function ClienteMeseroPanel() {
         <div className="flex gap-2">
           <input
             type="tel"
-            placeholder="DNI"
+            placeholder="DNI (opcional)"
             value={dni}
             onChange={(e) => {
               setDni(e.target.value)
