@@ -2,8 +2,6 @@ import { useAppData } from '../contexts/AppDataContext'
 import { useCart } from '../contexts/CartContext'
 import { formatDuracion, minutosDesde } from '../lib/tiempo'
 
-const UMBRAL_MESA_VIEJA_MIN = 60
-
 interface MesaGridProps {
   onMesaOcupadaClick: (mesaId: number, numeroMesa: string) => void
 }
@@ -43,7 +41,6 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
             const isSeleccionada = mesasSeleccionadas.has(m.MesaID)
             const info = pedidoInfoPorMesa[m.MesaID]
             const minutosOcupada = isOcupada && info ? minutosDesde(info.fechaCreacion) : 0
-            const esVieja = isOcupada && minutosOcupada >= UMBRAL_MESA_VIEJA_MIN
 
             const colorClass = isOcupada
               ? 'mesa-ocupada'
@@ -65,14 +62,6 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
                     className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white shadow-sm border border-red-200 flex items-center justify-center text-[10px]"
                   >
                     {info?.estado === 'SERVIDO' ? '✅' : '🍳'}
-                  </span>
-                )}
-                {esVieja && (
-                  <span
-                    title={`Ocupada hace ${formatDuracion(minutosOcupada)} sin cerrar la cuenta`}
-                    className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-900 text-[8px] font-black shadow-sm"
-                  >
-                    ⏰ {formatDuracion(minutosOcupada)}
                   </span>
                 )}
               </div>
