@@ -1,12 +1,15 @@
 import { useAppData } from '../contexts/AppDataContext'
 import { useCart } from '../contexts/CartContext'
+import { formatDuracion, minutosDesde } from '../lib/tiempo'
+
+const UMBRAL_MESA_VIEJA_MIN = 60
 
 interface MesaGridProps {
   onMesaOcupadaClick: (mesaId: number, numeroMesa: string) => void
 }
 
 export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
-  const { mesas, estadoPedidoPorMesa } = useAppData()
+  const { mesas, pedidoInfoPorMesa } = useAppData()
   const { mesasSeleccionadas, toggleMesa } = useCart()
 
   return (
@@ -38,26 +41,39 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
           {mesas.map((m) => {
             const isOcupada = m.Estado === 'OCUPADA'
             const isSeleccionada = mesasSeleccionadas.has(m.MesaID)
+            const info = pedidoInfoPorMesa[m.MesaID]
+            const minutosOcupada = isOcupada && info ? minutosDesde(info.fechaCreacion) : 0
+            const esVieja = isOcupada && minutosOcupada >= UMBRAL_MESA_VIEJA_MIN
+
             const colorClass = isOcupada
               ? 'mesa-ocupada'
               : isSeleccionada
                 ? 'mesa-seleccionada'
                 : 'border-slate-200 text-slate-400 hover:border-guinda/30 hover:text-slate-600 group bg-white'
+            const viejaClass = esVieja ? 'ring-2 ring-offset-2 ring-amber-400 soft-pulse' : ''
 
             return (
               <div
                 key={m.MesaID}
                 onClick={() => (isOcupada ? onMesaOcupadaClick(m.MesaID, m.NumeroMesa) : toggleMesa(m.MesaID))}
-                className={`aspect-[4/3] rounded-[20px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 relative border-2 shadow-soft ${colorClass}`}
+                className={`aspect-[4/3] rounded-[20px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 relative border-2 shadow-soft ${colorClass} ${viejaClass}`}
               >
                 <span className="text-[9px] font-black opacity-60 uppercase tracking-widest mt-1">Mesa</span>
                 <span className="text-2xl font-black leading-none">{m.NumeroMesa}</span>
                 {isOcupada && (
                   <span
-                    title={estadoPedidoPorMesa[m.MesaID] === 'SERVIDO' ? 'Servido — falta cobrar' : 'En cocina'}
+                    title={`${info?.estado === 'SERVIDO' ? 'Servido — falta cobrar' : 'En cocina'} · Ocupada hace ${formatDuracion(minutosOcupada)}`}
                     className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white shadow-sm border border-red-200 flex items-center justify-center text-[10px]"
                   >
-                    {estadoPedidoPorMesa[m.MesaID] === 'SERVIDO' ? '✅' : '🍳'}
+                    {info?.estado === 'SERVIDO' ? '✅' : '🍳'}
+                  </span>
+                )}
+                {esVieja && (
+                  <span
+                    title={`Ocupada hace ${formatDuracion(minutosOcupada)} sin cerrar la cuenta`}
+                    className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-900 text-[8px] font-black shadow-sm"
+                  >
+                    ⏰ {formatDuracion(minutosOcupada)}
                   </span>
                 )}
               </div>

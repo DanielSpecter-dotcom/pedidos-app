@@ -3,13 +3,18 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import type { Producto, Mesa, Mesero, Extra, Categoria, EstadoPedido } from '../types'
 
+export interface PedidoActivoInfo {
+  estado: EstadoPedido
+  fechaCreacion: string
+}
+
 interface AppDataContextValue {
   productos: Producto[]
   mesas: Mesa[]
   meseros: Mesero[]
   extras: Extra[]
   categorias: Categoria[]
-  estadoPedidoPorMesa: Record<number, EstadoPedido>
+  pedidoInfoPorMesa: Record<number, PedidoActivoInfo>
   loading: boolean
   error: string | null
   refetchMesas: () => Promise<void>
@@ -23,7 +28,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [meseros, setMeseros] = useState<Mesero[]>([])
   const [extras, setExtras] = useState<Extra[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [estadoPedidoPorMesa, setEstadoPedidoPorMesa] = useState<Record<number, EstadoPedido>>({})
+  const [pedidoInfoPorMesa, setPedidoInfoPorMesa] = useState<Record<number, PedidoActivoInfo>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,14 +47,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const refetchEstadoPedidos = useCallback(async () => {
     const { data: pedidos, error: errPedidos } = await supabase
       .from('Pedidos')
-      .select('PedidoID, EstadoPedido')
+      .select('PedidoID, EstadoPedido, FechaCreacion')
       .neq('EstadoPedido', 'ANULADO')
       .neq('EstadoPedido', 'PAGADO')
     if (errPedidos) throw errPedidos
 
     const pedidoIds = (pedidos ?? []).map((p) => p.PedidoID)
     if (pedidoIds.length === 0) {
-      setEstadoPedidoPorMesa({})
+      setPedidoInfoPorMesa({})
       return
     }
 
@@ -59,17 +64,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .in('PedidoID', pedidoIds)
     if (errAsig) throw errAsig
 
-    const estadoPorPedido: Record<number, EstadoPedido> = {}
+    const infoPorPedido: Record<number, PedidoActivoInfo> = {}
     ;(pedidos ?? []).forEach((p) => {
-      estadoPorPedido[p.PedidoID] = p.EstadoPedido
+      infoPorPedido[p.PedidoID] = { estado: p.EstadoPedido, fechaCreacion: p.FechaCreacion }
     })
 
-    const mapa: Record<number, EstadoPedido> = {}
+    const mapa: Record<number, PedidoActivoInfo> = {}
     ;(asignaciones ?? []).forEach((a) => {
-      const estado = estadoPorPedido[a.PedidoID]
-      if (estado) mapa[a.MesaID] = estado
+      const info = infoPorPedido[a.PedidoID]
+      // Si una mesa tiene más de un pedido activo (raro), nos quedamos con el
+      // más antiguo — es el que más urge cobrar/atender.
+      const actual = mapa[a.MesaID]
+      if (info && (!actual || new Date(info.fechaCreacion) < new Date(actual.fechaCreacion))) {
+        mapa[a.MesaID] = info
+      }
     })
-    setEstadoPedidoPorMesa(mapa)
+    setPedidoInfoPorMesa(mapa)
   }, [])
 
   useEffect(() => {
@@ -174,7 +184,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppDataContext.Provider
-      value={{ productos, mesas, meseros, extras, categorias, estadoPedidoPorMesa, loading, error, refetchMesas }}
+      value={{ productos, mesas, meseros, extras, categorias, pedidoInfoPorMesa, loading, error, refetchMesas }}
     >
       {children}
     </AppDataContext.Provider>
