@@ -70,9 +70,6 @@ function PedidoColaCard({
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-black/20">#{pedido.posicion}</span>
           <span className="font-black text-lg leading-none uppercase">{pedido.labelUbicacion}</span>
-          {pedido.items.some((i) => i.EsParaLlevar) && (
-            <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-400 text-slate-900">LLEVAR</span>
-          )}
         </div>
         <span className={`text-[11px] font-black px-2 py-1 rounded-lg ${urgent ? 'bg-black/20' : 'bg-black/10'}`}>
           {pedido.minutosEspera} min
@@ -94,9 +91,14 @@ function PedidoColaCard({
               {item.Cantidad}
             </span>
             <div className="flex-1 min-w-0">
-              <span className={`font-bold text-sm text-slate-800 ${marcados.has(item.DetalleID) ? 'line-through text-slate-400' : ''}`}>
-                {item.productoNombre}
-              </span>
+              <div className="flex items-center flex-wrap gap-1.5">
+                <span className={`font-bold text-sm text-slate-800 ${marcados.has(item.DetalleID) ? 'line-through text-slate-400' : ''}`}>
+                  {item.productoNombre}
+                </span>
+                {item.EsParaLlevar && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-400 text-slate-900 uppercase">Llevar</span>
+                )}
+              </div>
               {item.Notas && <div className="text-[10px] text-guinda font-medium italic">📝 {item.Notas}</div>}
             </div>
             <input
