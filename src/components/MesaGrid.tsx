@@ -50,13 +50,12 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
               : isSeleccionada
                 ? 'mesa-seleccionada'
                 : 'border-slate-200 text-slate-400 hover:border-guinda/30 hover:text-slate-600 group bg-white'
-            const viejaClass = esVieja ? 'ring-2 ring-offset-2 ring-amber-400 soft-pulse' : ''
 
             return (
               <div
                 key={m.MesaID}
                 onClick={() => (isOcupada ? onMesaOcupadaClick(m.MesaID, m.NumeroMesa) : toggleMesa(m.MesaID))}
-                className={`aspect-[4/3] rounded-[20px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 relative border-2 shadow-soft ${colorClass} ${viejaClass}`}
+                className={`aspect-[4/3] rounded-[20px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 relative border-2 shadow-soft ${colorClass}`}
               >
                 <span className="text-[9px] font-black opacity-60 uppercase tracking-widest mt-1">Mesa</span>
                 <span className="text-2xl font-black leading-none">{m.NumeroMesa}</span>
