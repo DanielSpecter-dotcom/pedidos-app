@@ -4,11 +4,20 @@ import type { PedidoCola } from '../types'
 interface KitchenQueueGridProps {
   pedidos: PedidoCola[]
   onMarcarListo: (pedidoId: number) => void
+  onDeshacerListo: (pedidoId: number) => void
+  pendientesDespacho: Set<number>
   onAvisarMesero: (pedido: PedidoCola) => void
   esAdmin: boolean
 }
 
-export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero, esAdmin }: KitchenQueueGridProps) {
+export function KitchenQueueGrid({
+  pedidos,
+  onMarcarListo,
+  onDeshacerListo,
+  pendientesDespacho,
+  onAvisarMesero,
+  esAdmin,
+}: KitchenQueueGridProps) {
   if (pedidos.length === 0) {
     return (
       <div className="col-span-full min-h-[300px] flex flex-col items-center justify-center text-slate-300 select-none">
@@ -27,6 +36,8 @@ export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero, esAdm
           key={pedido.pedidoId}
           pedido={pedido}
           onMarcarListo={onMarcarListo}
+          onDeshacerListo={onDeshacerListo}
+          pendienteDespacho={pendientesDespacho.has(pedido.pedidoId)}
           onAvisarMesero={onAvisarMesero}
           esAdmin={esAdmin}
         />
@@ -38,11 +49,15 @@ export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero, esAdm
 function PedidoColaCard({
   pedido,
   onMarcarListo,
+  onDeshacerListo,
+  pendienteDespacho,
   onAvisarMesero,
   esAdmin,
 }: {
   pedido: PedidoCola
   onMarcarListo: (pedidoId: number) => void
+  onDeshacerListo: (pedidoId: number) => void
+  pendienteDespacho: boolean
   onAvisarMesero: (pedido: PedidoCola) => void
   esAdmin: boolean
 }) {
@@ -65,7 +80,9 @@ function PedidoColaCard({
   }
 
   return (
-    <article className={`rounded-[20px] border ${urgent ? 'border-red-300' : 'border-slate-200'} shadow-soft overflow-hidden bg-white flex flex-col`}>
+    <article
+      className={`rounded-[20px] border ${urgent ? 'border-red-300' : 'border-slate-200'} shadow-soft overflow-hidden bg-white flex flex-col transition-opacity ${pendienteDespacho ? 'opacity-50' : ''}`}
+    >
       <div className={`px-4 py-3 flex items-center justify-between gap-3 text-white ${urgent ? 'bg-red-600' : 'bg-guinda'}`}>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-black/20">#{pedido.posicion}</span>
@@ -111,7 +128,14 @@ function PedidoColaCard({
         ))}
       </div>
 
-      {esAdmin ? (
+      {pendienteDespacho ? (
+        <button
+          onClick={() => onDeshacerListo(pedido.pedidoId)}
+          className="h-12 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all shrink-0 flex items-center justify-center gap-2"
+        >
+          ↩ Deshacer — despachando el pedido...
+        </button>
+      ) : esAdmin ? (
         <div className="grid grid-cols-2 gap-px bg-slate-100 shrink-0">
           <button
             onClick={handleAvisar}

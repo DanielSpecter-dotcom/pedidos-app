@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import { useAppData } from '../contexts/AppDataContext'
@@ -13,6 +13,10 @@ interface CocinaViewProps {
   onVolverAPedidos: () => void
 }
 
+// Tiempo de gracia entre tocar "Marcar Listo" y que de verdad se despache el
+// pedido — da chance de deshacerlo si fue un toque accidental.
+const DESPACHO_DELAY_MS = 5000
+
 export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const { productos, categorias, meseros, refetchMesas } = useAppData()
   const { rol } = useAuth()
@@ -21,6 +25,8 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(false)
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null)
+  const [pendientesDespacho, setPendientesDespacho] = useState<Set<number>>(new Set())
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
 
   const cargarVistaCocina = useCallback(async () => {
     setCargando(true)
@@ -183,27 +189,74 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
     })
   }
 
-  async function marcarPedidoListo(pedidoId: number) {
-    if (!confirm('¿Marcar todo el pedido como listo?')) return
+  const ejecutarMarcarListo = useCallback(
+    async (pedidoId: number) => {
+      try {
+        const { error: errUpdate } = await supabase
+          .from('DetallePedido')
+          .update({ EstadoPlato: 'SERVIDO' })
+          .eq('PedidoID', pedidoId)
+          .eq('EstadoPlato', 'EN_COLA')
+        if (errUpdate) throw errUpdate
 
-    try {
-      const { error: errUpdate } = await supabase
-        .from('DetallePedido')
-        .update({ EstadoPlato: 'SERVIDO' })
-        .eq('PedidoID', pedidoId)
-        .eq('EstadoPlato', 'EN_COLA')
-      if (errUpdate) throw errUpdate
+        const { error: errPedido } = await supabase.from('Pedidos').update({ EstadoPedido: 'SERVIDO' }).eq('PedidoID', pedidoId)
+        if (errPedido) throw errPedido
 
-      const { error: errPedido } = await supabase.from('Pedidos').update({ EstadoPedido: 'SERVIDO' }).eq('PedidoID', pedidoId)
-      if (errPedido) throw errPedido
+        await cargarVistaCocina()
+        await refetchMesas()
+      } catch (err) {
+        console.error('Error marcando listo:', err)
+        alert('No se pudo marcar el pedido como listo: ' + (err instanceof Error ? err.message : String(err)))
+      }
+    },
+    [cargarVistaCocina, refetchMesas],
+  )
 
-      await cargarVistaCocina()
-      await refetchMesas()
-    } catch (err) {
-      console.error('Error marcando listo:', err)
-      alert('No se pudo marcar el pedido como listo: ' + (err instanceof Error ? err.message : String(err)))
-    }
+  // Siempre apunta a la versión más reciente de ejecutarMarcarListo, para que
+  // el cleanup de desmontaje (más abajo) no dispare una versión vieja.
+  const ejecutarMarcarListoRef = useRef(ejecutarMarcarListo)
+  useEffect(() => {
+    ejecutarMarcarListoRef.current = ejecutarMarcarListo
+  }, [ejecutarMarcarListo])
+
+  function iniciarMarcarListo(pedidoId: number) {
+    setPendientesDespacho((prev) => new Set(prev).add(pedidoId))
+    const timer = setTimeout(() => {
+      timersRef.current.delete(pedidoId)
+      setPendientesDespacho((prev) => {
+        const next = new Set(prev)
+        next.delete(pedidoId)
+        return next
+      })
+      ejecutarMarcarListoRef.current(pedidoId)
+    }, DESPACHO_DELAY_MS)
+    timersRef.current.set(pedidoId, timer)
   }
+
+  function deshacerMarcarListo(pedidoId: number) {
+    const timer = timersRef.current.get(pedidoId)
+    if (timer) clearTimeout(timer)
+    timersRef.current.delete(pedidoId)
+    setPendientesDespacho((prev) => {
+      const next = new Set(prev)
+      next.delete(pedidoId)
+      return next
+    })
+  }
+
+  // Si se cambia de vista con un despacho pendiente, se ejecuta igual en vez
+  // de perderse en silencio — el mesero ya no puede tocar "Deshacer" si no
+  // está viendo la pantalla.
+  useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      timers.forEach((timer, pedidoId) => {
+        clearTimeout(timer)
+        ejecutarMarcarListoRef.current(pedidoId)
+      })
+      timers.clear()
+    }
+  }, [])
 
   const platosCount = pedidosCola.reduce((sum, p) => sum + p.items.reduce((s, item) => s + (item.Cantidad || 0), 0), 0)
   const pedidosCount = pedidosCola.length
@@ -272,7 +325,9 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
               ) : (
                 <KitchenQueueGrid
                   pedidos={pedidosCola}
-                  onMarcarListo={marcarPedidoListo}
+                  onMarcarListo={iniciarMarcarListo}
+                  onDeshacerListo={deshacerMarcarListo}
+                  pendientesDespacho={pendientesDespacho}
                   onAvisarMesero={avisarMesero}
                   esAdmin={rol === 'admin'}
                 />
