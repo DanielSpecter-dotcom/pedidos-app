@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import { useAppData } from '../contexts/AppDataContext'
+import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationContext'
 import { KitchenQueueGrid } from '../components/KitchenQueueGrid'
 import { KitchenSummary } from '../components/KitchenSummary'
@@ -14,6 +15,7 @@ interface CocinaViewProps {
 
 export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const { productos, categorias, meseros, refetchMesas } = useAppData()
+  const { rol } = useAuth()
   const { enviarAvisoMesero } = useNotifications()
   const [pedidosCola, setPedidosCola] = useState<PedidoCola[]>([])
   const [cargando, setCargando] = useState(true)
@@ -268,7 +270,12 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
                   <span className="text-xs font-bold">No se pudo cargar la cola de cocina.</span>
                 </div>
               ) : (
-                <KitchenQueueGrid pedidos={pedidosCola} onMarcarListo={marcarPedidoListo} onAvisarMesero={avisarMesero} />
+                <KitchenQueueGrid
+                  pedidos={pedidosCola}
+                  onMarcarListo={marcarPedidoListo}
+                  onAvisarMesero={avisarMesero}
+                  esAdmin={rol === 'admin'}
+                />
               )}
             </div>
           </div>

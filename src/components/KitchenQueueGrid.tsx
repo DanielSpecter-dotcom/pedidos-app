@@ -5,9 +5,10 @@ interface KitchenQueueGridProps {
   pedidos: PedidoCola[]
   onMarcarListo: (pedidoId: number) => void
   onAvisarMesero: (pedido: PedidoCola) => void
+  esAdmin: boolean
 }
 
-export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero }: KitchenQueueGridProps) {
+export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero, esAdmin }: KitchenQueueGridProps) {
   if (pedidos.length === 0) {
     return (
       <div className="col-span-full min-h-[300px] flex flex-col items-center justify-center text-slate-300 select-none">
@@ -22,7 +23,13 @@ export function KitchenQueueGrid({ pedidos, onMarcarListo, onAvisarMesero }: Kit
   return (
     <>
       {pedidos.map((pedido) => (
-        <PedidoColaCard key={pedido.pedidoId} pedido={pedido} onMarcarListo={onMarcarListo} onAvisarMesero={onAvisarMesero} />
+        <PedidoColaCard
+          key={pedido.pedidoId}
+          pedido={pedido}
+          onMarcarListo={onMarcarListo}
+          onAvisarMesero={onAvisarMesero}
+          esAdmin={esAdmin}
+        />
       ))}
     </>
   )
@@ -32,10 +39,12 @@ function PedidoColaCard({
   pedido,
   onMarcarListo,
   onAvisarMesero,
+  esAdmin,
 }: {
   pedido: PedidoCola
   onMarcarListo: (pedidoId: number) => void
   onAvisarMesero: (pedido: PedidoCola) => void
+  esAdmin: boolean
 }) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set())
   const [avisado, setAvisado] = useState(false)
@@ -100,22 +109,28 @@ function PedidoColaCard({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-px bg-slate-100 shrink-0">
-        <button
-          onClick={handleAvisar}
-          className={`h-12 text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 ${
-            avisado ? 'bg-amber-50 text-amber-600' : 'bg-amber-400 hover:bg-amber-500 text-slate-900'
-          }`}
-        >
-          {avisado ? '🔔 Mesero avisado' : '🔔 Avisar Mesero'}
-        </button>
-        <button
-          onClick={() => onMarcarListo(pedido.pedidoId)}
-          className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all"
-        >
-          Marcar Listo ✓
-        </button>
-      </div>
+      {esAdmin ? (
+        <div className="grid grid-cols-2 gap-px bg-slate-100 shrink-0">
+          <button
+            onClick={handleAvisar}
+            className={`h-12 text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 ${
+              avisado ? 'bg-amber-50 text-amber-600' : 'bg-amber-400 hover:bg-amber-500 text-slate-900'
+            }`}
+          >
+            {avisado ? '🔔 Mesero avisado' : '🔔 Avisar Mesero'}
+          </button>
+          <button
+            onClick={() => onMarcarListo(pedido.pedidoId)}
+            className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all"
+          >
+            Marcar Listo ✓
+          </button>
+        </div>
+      ) : (
+        <div className="h-9 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300 bg-slate-50 shrink-0">
+          Solo lectura
+        </div>
+      )}
     </article>
   )
 }
