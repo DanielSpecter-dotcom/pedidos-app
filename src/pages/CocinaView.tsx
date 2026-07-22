@@ -7,7 +7,7 @@ import { useNotifications } from '../contexts/NotificationContext'
 import { KitchenQueueGrid } from '../components/KitchenQueueGrid'
 import { KitchenSummary } from '../components/KitchenSummary'
 import { MobileKitchenBar } from '../components/MobileKitchenBar'
-import type { ColaCocinaItem, PedidoCola } from '../types'
+import type { ColaCocinaItem, PedidoCola, TipoServicio } from '../types'
 
 interface CocinaViewProps {
   onVolverAPedidos: () => void
@@ -16,6 +16,16 @@ interface CocinaViewProps {
 // Tiempo de gracia entre tocar "Marcar Listo" y que de verdad se despache el
 // pedido — da chance de deshacerlo si fue un toque accidental.
 const DESPACHO_DELAY_MS = 5000
+
+type FiltroServicio = 'TODOS' | TipoServicio
+
+const OPCIONES_FILTRO: { valor: FiltroServicio; label: string }[] = [
+  { valor: 'TODOS', label: 'Todos' },
+  { valor: 'MESA', label: 'Mesa' },
+  { valor: 'LLEVAR', label: 'Llevar' },
+  { valor: 'RECOGER', label: 'Recoger' },
+  { valor: 'DELIVERY', label: 'Delivery' },
+]
 
 export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const { productos, categorias, meseros, refetchMesas } = useAppData()
@@ -27,6 +37,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null)
   const [pendientesDespacho, setPendientesDespacho] = useState<Set<number>>(new Set())
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const [filtroServicio, setFiltroServicio] = useState<FiltroServicio>('TODOS')
 
   const cargarVistaCocina = useCallback(async () => {
     setCargando(true)
@@ -258,9 +269,27 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
     }
   }, [])
 
-  const platosCount = pedidosCola.reduce((sum, p) => sum + p.items.reduce((s, item) => s + (item.Cantidad || 0), 0), 0)
-  const pedidosCount = pedidosCola.length
-  const waitingMinutes = pedidosCola[0]?.minutosEspera ?? 0
+  const conteoPorServicio = pedidosCola.reduce<Record<string, number>>((acc, p) => {
+    acc[p.tipoServicio] = (acc[p.tipoServicio] || 0) + 1
+    return acc
+  }, {})
+
+  const pedidosFiltrados =
+    filtroServicio === 'TODOS' ? pedidosCola : pedidosCola.filter((p) => p.tipoServicio === filtroServicio)
+
+  // Si el filtro activo se queda sin pedidos (ej. se despachó el único
+  // Delivery pendiente), vuelve solo a "Todos" en vez de mostrar una cola
+  // vacía engañosa.
+  useEffect(() => {
+    if (filtroServicio !== 'TODOS' && !conteoPorServicio[filtroServicio]) {
+      setFiltroServicio('TODOS')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidosCola])
+
+  const platosCount = pedidosFiltrados.reduce((sum, p) => sum + p.items.reduce((s, item) => s + (item.Cantidad || 0), 0), 0)
+  const pedidosCount = pedidosFiltrados.length
+  const waitingMinutes = pedidosFiltrados[0]?.minutosEspera ?? 0
 
   return (
     <section className="h-auto lg:h-full w-full p-4 sm:p-6 lg:overflow-hidden">
@@ -311,6 +340,22 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
                 Actualizar
               </button>
             </div>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 sm:px-5 py-3 border-b border-slate-100 bg-white shrink-0">
+              {OPCIONES_FILTRO.filter((o) => o.valor === 'TODOS' || conteoPorServicio[o.valor]).map((o) => (
+                <button
+                  key={o.valor}
+                  onClick={() => setFiltroServicio(o.valor)}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wide border transition-all ${
+                    filtroServicio === o.valor
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {o.label}
+                  {o.valor !== 'TODOS' && conteoPorServicio[o.valor] ? ` (${conteoPorServicio[o.valor]})` : ''}
+                </button>
+              ))}
+            </div>
             <div className="flex-1 overflow-y-auto thin-scrollbar p-4 sm:p-5 grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
               {cargando ? (
                 <div className="col-span-full min-h-[260px] flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -324,7 +369,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
                 </div>
               ) : (
                 <KitchenQueueGrid
-                  pedidos={pedidosCola}
+                  pedidos={pedidosFiltrados}
                   onMarcarListo={iniciarMarcarListo}
                   onDeshacerListo={deshacerMarcarListo}
                   pendientesDespacho={pendientesDespacho}
