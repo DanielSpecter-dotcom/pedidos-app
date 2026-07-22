@@ -1,9 +1,16 @@
 // Sonido de aviso generado con Web Audio API (sin archivos de audio externos).
 // Los navegadores bloquean el audio hasta que hay una interacción real del
-// usuario en la página — habilitarSonido() se llama una sola vez en el primer
-// click/tap para "desbloquear" el AudioContext antes de que llegue un aviso.
+// usuario en la página — habilitarSonido() se llama en el primer gesto para
+// "desbloquear" el AudioContext antes de que llegue un aviso.
+//
+// iOS Safari es más estricto que Chrome/Android: no basta con resume(), hay
+// que reproducir un buffer de verdad (aunque sea silencioso) dentro del mismo
+// gesto de toque, o el contexto queda mudo aunque su estado reporte "running".
+// Si el celular tiene la perilla de silencio física activada, iOS igual
+// silencia el Web Audio API — eso no se puede evitar desde el código.
 
 let audioCtx: AudioContext | null = null
+let desbloqueado = false
 
 function obtenerContexto(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -14,9 +21,26 @@ function obtenerContexto(): AudioContext | null {
 }
 
 export function habilitarSonido() {
+  if (desbloqueado) return
   const ctx = obtenerContexto()
-  if (ctx && ctx.state === 'suspended') {
+  if (!ctx) return
+
+  if (ctx.state === 'suspended') {
     ctx.resume().catch(() => {})
+  }
+
+  // Truco estándar para iOS: un buffer de 1 frame, silencioso, disparado de
+  // forma síncrona dentro del gesto — esto es lo que de verdad desbloquea el
+  // audio en Safari, resume() por sí solo no alcanza ahí.
+  try {
+    const buffer = ctx.createBuffer(1, 1, 22050)
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.connect(ctx.destination)
+    source.start(0)
+    desbloqueado = true
+  } catch {
+    // Si falla, se reintenta en el próximo gesto del usuario.
   }
 }
 

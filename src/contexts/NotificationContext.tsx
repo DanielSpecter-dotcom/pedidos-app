@@ -51,14 +51,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Desbloquea el AudioContext en la primera interacción real del usuario,
-  // para que el navegador no bloquee el sonido cuando llegue un aviso.
+  // para que el navegador no bloquee el sonido cuando llegue un aviso. Se
+  // escuchan varios tipos de gesto (touch, mouse, teclado) porque en iOS
+  // Safari el desbloqueo debe ocurrir sincrónicamente dentro del gesto.
   useEffect(() => {
+    const eventos = ['pointerdown', 'touchend', 'keydown'] as const
     function onPrimeraInteraccion() {
       habilitarSonido()
-      document.removeEventListener('pointerdown', onPrimeraInteraccion)
+      eventos.forEach((ev) => document.removeEventListener(ev, onPrimeraInteraccion))
     }
-    document.addEventListener('pointerdown', onPrimeraInteraccion)
-    return () => document.removeEventListener('pointerdown', onPrimeraInteraccion)
+    eventos.forEach((ev) => document.addEventListener(ev, onPrimeraInteraccion))
+    return () => eventos.forEach((ev) => document.removeEventListener(ev, onPrimeraInteraccion))
   }, [])
 
   function enviarAvisoMesero(data: { pedidoId: number; labelUbicacion: string; clienteNombre: string }) {
