@@ -25,7 +25,16 @@ interface PedidoEditando {
 }
 
 export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGuardado }: EditarPedidoModalProps) {
-  const { productos, extras } = useAppData()
+  const { productos, extras, categorias } = useAppData()
+
+  // Igual que en CartContext.confirmarPedido: Bebidas/Infusiones/Licores no
+  // pasan por cocina, nacen SERVIDO en vez de EN_COLA (ver
+  // db/melchorita/23_estado_plato_sin_preparacion.sql).
+  function requierePreparacion(categoriaId: number | null): boolean {
+    if (categoriaId === null) return true
+    const cat = categorias.find((c) => c.CategoriaID === categoriaId)
+    return cat ? cat.RequierePreparacion : true
+  }
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +55,9 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
     [extras, productoSeleccionado],
   )
 
-  const total = platos.filter((p) => p.estadoPlato !== 'SERVIDO').reduce((sum, p) => sum + p.cantidad * p.precioUnit, 0)
+  // Igual que nuevoTotal en guardarCambiosEditar: se cuentan todos los
+  // platos, SERVIDO incluido — ya entregado no es lo mismo que ya pagado.
+  const total = platos.reduce((sum, p) => sum + p.cantidad * p.precioUnit, 0)
 
   useEffect(() => {
     let cancelado = false
@@ -254,7 +265,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
           PrecioUnitario: p.precioUnit,
           Notas: p.notas || '',
           EsParaLlevar: p.esLlevar || false,
-          EstadoPlato: 'EN_COLA',
+          EstadoPlato: requierePreparacion(p.categoriaId) ? 'EN_COLA' : 'SERVIDO',
           FechaAgregado: ahora,
         }))
 
@@ -268,8 +279,11 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
           .single()
 
         const estadoActual = pedidoActual?.EstadoPedido || pedido.estadoPedido
+        // Reactivar solo tiene sentido si lo nuevo agregado sí requiere
+        // cocina — una bebida sola no debería devolver el pedido a PENDIENTE.
+        const hayPlatoNuevoConPreparacion = platosNuevos.some((p) => requierePreparacion(p.categoriaId))
 
-        if (estadoActual === 'SERVIDO' || estadoActual === 'PAGADO') {
+        if (hayPlatoNuevoConPreparacion && (estadoActual === 'SERVIDO' || estadoActual === 'PAGADO')) {
           const { error: errUpdate } = await supabase
             .from('Pedidos')
             .update({ EstadoPedido: 'PENDIENTE' })
@@ -278,9 +292,11 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
         }
       }
 
-      const nuevoTotal = platos
-        .filter((p) => p.estadoPlato !== 'SERVIDO')
-        .reduce((sum, p) => sum + p.cantidad * p.precioUnit, 0)
+      // El total a cobrar es de TODOS los platos, sin importar su
+      // EstadoPlato — "SERVIDO" solo significa que cocina ya lo entregó,
+      // no que el cliente ya lo pagó. Excluirlos acá (bug anterior) hacía
+      // que el total mostrado en Caja fuera solo el de los platos nuevos.
+      const nuevoTotal = platos.reduce((sum, p) => sum + p.cantidad * p.precioUnit, 0)
 
       const { error: errTotal } = await supabase.from('Pedidos').update({ Total: nuevoTotal }).eq('PedidoID', pedido.pedidoID)
       if (errTotal) throw errTotal

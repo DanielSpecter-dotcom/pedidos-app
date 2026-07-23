@@ -33,7 +33,7 @@ const CartContext = createContext<CartContextValue | null>(null)
 const DELIVERY_VACIO: DeliveryInfo = { nombre: '', direccion: '', telefono: '' }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { refetchMesas } = useAppData()
+  const { refetchMesas, categorias } = useAppData()
 
   const [carrito, setCarrito] = useState<CartItem[]>([])
   const [tipoServicio, setTipoServicioState] = useState<TipoServicio>('MESA')
@@ -45,6 +45,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [guardando, setGuardando] = useState(false)
 
   const total = carrito.reduce((sum, item) => sum + item.cantidad * item.precioUnit, 0)
+
+  // Bebidas/Infusiones/Licores (Categorias.RequierePreparacion = false)
+  // nunca pasan por cocina — nacen SERVIDO en vez de EN_COLA, igual que en
+  // el RPC crear_pedido de la app de escritorio (ver
+  // db/melchorita/23_estado_plato_sin_preparacion.sql). Si no, quedan
+  // EN_COLA para siempre porque la cola de Cocina las filtra y nadie las
+  // va a marcar "listo".
+  function requierePreparacion(categoriaId: number | null): boolean {
+    if (categoriaId === null) return true
+    const cat = categorias.find((c) => c.CategoriaID === categoriaId)
+    return cat ? cat.RequierePreparacion : true
+  }
 
   function setTipoServicio(tipo: TipoServicio) {
     setTipoServicioState(tipo)
@@ -232,7 +244,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         PrecioUnitario: item.precioUnit,
         Notas: i === 0 && notasDelivery ? (item.notas ? `${item.notas} | ${notasDelivery}` : notasDelivery) : item.notas,
         EsParaLlevar: item.esLlevar,
-        EstadoPlato: 'EN_COLA',
+        EstadoPlato: requierePreparacion(item.categoriaId) ? 'EN_COLA' : 'SERVIDO',
         FechaAgregado: ahora,
       }))
 
