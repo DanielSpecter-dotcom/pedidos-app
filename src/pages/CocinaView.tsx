@@ -210,15 +210,14 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const ejecutarMarcarListo = useCallback(
     async (pedidoId: number) => {
       try {
-        const { error: errUpdate } = await supabase
-          .from('DetallePedido')
-          .update({ EstadoPlato: 'SERVIDO' })
-          .eq('PedidoID', pedidoId)
-          .eq('EstadoPlato', 'EN_COLA')
-        if (errUpdate) throw errUpdate
-
-        const { error: errPedido } = await supabase.from('Pedidos').update({ EstadoPedido: 'SERVIDO' }).eq('PedidoID', pedidoId)
-        if (errPedido) throw errPedido
+        // Mismo RPC que usa la app de escritorio (ver
+        // db/melchorita/08_pago_anticipado.sql) en vez de 2 updates sueltos:
+        // así queda atómico, y maneja los mismos casos borde — si quedan
+        // platos EN_COLA (se agregó algo nuevo mientras tanto) no cierra el
+        // pedido todavía, si ya estaba PAGADO (pago anticipado) no lo pisa
+        // con SERVIDO y recién ahí libera la mesa.
+        const { error } = await supabase.rpc('despachar_pedido', { p_pedido_id: pedidoId })
+        if (error) throw error
 
         await cargarVistaCocina()
         await refetchMesas()
