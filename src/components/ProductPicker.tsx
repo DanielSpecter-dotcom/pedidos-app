@@ -10,7 +10,11 @@ export function ProductPicker() {
   const { addToCart } = useCart()
 
   const [productoId, setProductoId] = useState('')
-  const [cantidad, setCantidad] = useState(1)
+  // Texto libre, no número: si el estado fuera number, cada tecla que
+  // borra el campo (dejándolo vacío momentáneamente) se resolvía con
+  // parseInt('') || 1 y el input volvía a "1" solo, sin dejar escribir
+  // un número de más de un dígito ni borrarlo para reemplazarlo.
+  const [cantidadTexto, setCantidadTexto] = useState('1')
   const [esLlevar, setEsLlevar] = useState(false)
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<Set<number>>(new Set())
 
@@ -34,11 +38,12 @@ export function ProductPicker() {
       alert('Seleccione un producto')
       return
     }
+    const cantidad = Math.max(1, parseInt(cantidadTexto) || 1)
     const extrasElegidos = extras.filter((ex) => extrasSeleccionados.has(ex.ExtraID))
     addToCart(productoSeleccionado, cantidad, esLlevar, extrasElegidos)
 
     setProductoId('')
-    setCantidad(1)
+    setCantidadTexto('1')
     setEsLlevar(false)
     setExtrasSeleccionados(new Set())
   }
@@ -59,8 +64,9 @@ export function ProductPicker() {
         <input
           type="number"
           min={1}
-          value={cantidad}
-          onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+          value={cantidadTexto}
+          onChange={(e) => setCantidadTexto(e.target.value)}
+          onBlur={() => setCantidadTexto(String(Math.max(1, parseInt(cantidadTexto) || 1)))}
           className="w-[60px] shrink-0 text-center font-bold border border-slate-200 rounded-2xl h-12 text-sm focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner bg-slate-50 transition-all"
         />
       </div>

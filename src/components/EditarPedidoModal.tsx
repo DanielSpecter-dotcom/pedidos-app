@@ -22,10 +22,16 @@ interface PedidoEditando {
   pedidoID: number
   estadoPedido: EstadoPedido
   labelUbicacion: string
+  tipoServicio: string
 }
 
 export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGuardado }: EditarPedidoModalProps) {
-  const { productos, extras, categorias } = useAppData()
+  const { productos, extras, categorias, mesas, refetchMesas } = useAppData()
+
+  const [mostrarCambioMesa, setMostrarCambioMesa] = useState(false)
+  const [mesaDestinoId, setMesaDestinoId] = useState('')
+  const [cambiandoMesa, setCambiandoMesa] = useState(false)
+  const mesasLibres = mesas.filter((m) => m.Estado === 'LIBRE')
 
   // Igual que en CartContext.confirmarPedido: Bebidas/Infusiones/Licores no
   // pasan por cocina, nacen SERVIDO en vez de EN_COLA (ver
@@ -45,7 +51,9 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
   const [personalizeIndex, setPersonalizeIndex] = useState<number | null>(null)
 
   const [productoId, setProductoId] = useState('')
-  const [cantidad, setCantidad] = useState(1)
+  // Texto libre, no número — ver mismo fix en ProductPicker.tsx (con
+  // number, el input se auto-reseteaba a "1" apenas se intentaba borrar).
+  const [cantidadTexto, setCantidadTexto] = useState('1')
   const [esLlevar, setEsLlevar] = useState(false)
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<Set<number>>(new Set())
 
@@ -170,7 +178,12 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
         }))
 
         if (!cancelado) {
-          setPedido({ pedidoID: pedidoActual.PedidoID, estadoPedido: pedidoActual.EstadoPedido, labelUbicacion })
+          setPedido({
+            pedidoID: pedidoActual.PedidoID,
+            estadoPedido: pedidoActual.EstadoPedido,
+            labelUbicacion,
+            tipoServicio: pedidoActual.TipoServicio,
+          })
           setPlatos(platosOrdenados)
         }
       } catch (err) {
@@ -186,6 +199,31 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
     }
   }, [pedidoId, mesaId, numeroMesa, productos])
 
+  async function cambiarMesa() {
+    if (!pedido || !mesaDestinoId) return
+    const mesaDestino = mesas.find((m) => m.MesaID === parseInt(mesaDestinoId))
+    if (!mesaDestino) return
+
+    setCambiandoMesa(true)
+    try {
+      const { error } = await supabase.rpc('cambiar_mesa_pedido', {
+        p_pedido_id: pedido.pedidoID,
+        p_mesa_nueva_id: mesaDestino.MesaID,
+      })
+      if (error) throw error
+
+      setPedido({ ...pedido, labelUbicacion: `Mesa ${mesaDestino.NumeroMesa}` })
+      setMostrarCambioMesa(false)
+      setMesaDestinoId('')
+      await refetchMesas()
+    } catch (err) {
+      console.error('Error al cambiar de mesa:', err)
+      alert('❌ No se pudo cambiar de mesa: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setCambiandoMesa(false)
+    }
+  }
+
   function toggleExtra(extraId: number, marcado: boolean) {
     setExtrasSeleccionados((prev) => {
       const next = new Set(prev)
@@ -200,6 +238,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
       alert('Selecciona un producto')
       return
     }
+    const cantidad = Math.max(1, parseInt(cantidadTexto) || 1)
     const extrasElegidos = extras.filter((ex) => extrasSeleccionados.has(ex.ExtraID))
     const precioConExtras = productoSeleccionado.Precio + extrasElegidos.reduce((s, ex) => s + ex.PrecioUnitario, 0)
     const notas = extrasElegidos.map((ex) => `+${ex.Nombre}`).join(', ')
@@ -222,7 +261,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
     ])
 
     setProductoId('')
-    setCantidad(1)
+    setCantidadTexto('1')
     setEsLlevar(false)
     setExtrasSeleccionados(new Set())
   }
@@ -317,7 +356,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-opacity fade-animate" onClick={onClose}></div>
-      <div className="relative w-full md:w-[580px] bg-white rounded-[24px] sm:rounded-[32px] shadow-2xl overflow-hidden modal-animate flex flex-col h-auto max-h-[calc(100dvh-1.5rem)] border border-slate-100 z-10 max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw]">
+      <div className="relative w-full md:w-[580px] bg-white rounded-[24px] sm:rounded-[32px] shadow-2xl overflow-hidden modal-animate flex flex-col h-auto max-h-[calc(100dvh-14px)] border border-slate-100 z-10 max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw]">
         <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white/10 rounded-[16px] flex items-center justify-center text-white text-xl font-black border border-white/10 backdrop-blur-sm shadow-inner">
@@ -353,6 +392,53 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
           </div>
         </div>
 
+        {pedido && pedido.tipoServicio === 'MESA' && (
+          <div className="px-5 py-2 bg-slate-50 border-b border-slate-100 shrink-0">
+            {!mostrarCambioMesa ? (
+              <button
+                onClick={() => setMostrarCambioMesa(true)}
+                className="text-xs font-black text-guinda uppercase tracking-wide inline-flex items-center gap-1.5 bg-white border border-guinda/20 px-3.5 py-2 rounded-xl shadow-sm active:scale-95 hover:bg-guinda/5 transition-all"
+              >
+                🔄 Cambiar de mesa
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <select
+                  value={mesaDestinoId}
+                  onChange={(e) => setMesaDestinoId(e.target.value)}
+                  className="flex-1 bg-white border border-slate-200 rounded-xl px-3 h-9 text-xs font-bold focus:border-guinda focus:ring-4 focus:ring-guinda/10 outline-none"
+                >
+                  <option value="">Elegí la mesa destino...</option>
+                  {mesasLibres.map((m) => (
+                    <option key={m.MesaID} value={m.MesaID}>
+                      Mesa {m.NumeroMesa}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={cambiarMesa}
+                  disabled={!mesaDestinoId || cambiandoMesa}
+                  className="h-9 px-4 rounded-xl bg-guinda text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                >
+                  {cambiandoMesa ? '...' : 'Mover'}
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarCambioMesa(false)
+                    setMesaDestinoId('')
+                  }}
+                  className="h-9 px-3 rounded-xl bg-slate-100 text-slate-500 text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all shrink-0"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {mostrarCambioMesa && mesasLibres.length === 0 && (
+              <p className="text-[10px] font-bold text-slate-400 mt-2">No hay mesas libres ahora mismo.</p>
+            )}
+          </div>
+        )}
+
         <div className="px-5 pt-4 pb-3 bg-white border-b border-slate-100 shrink-0">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">Sumar al pedido</p>
           <div className="flex flex-col gap-2">
@@ -370,8 +456,9 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
               <input
                 type="number"
                 min={1}
-                value={cantidad}
-                onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+                value={cantidadTexto}
+                onChange={(e) => setCantidadTexto(e.target.value)}
+                onBlur={() => setCantidadTexto(String(Math.max(1, parseInt(cantidadTexto) || 1)))}
                 className="w-[60px] shrink-0 text-center font-bold border border-slate-200 rounded-2xl h-12 text-sm focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner bg-slate-50"
               />
             </div>
@@ -472,11 +559,11 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
           )}
         </div>
 
-        <div className="p-4 sm:p-5 bg-white border-t border-slate-100 shrink-0 safe-bottom">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-3.5 sm:p-4 bg-white border-t border-slate-100 shrink-0 safe-bottom">
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-0.5">Total de la Cuenta</span>
-              <span className="text-3xl font-black text-slate-800 tracking-tight">S/ {total.toFixed(2)}</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Total de la Cuenta</span>
+              <span className="text-xl font-black text-slate-800 tracking-tight">S/ {total.toFixed(2)}</span>
             </div>
           </div>
           <div className="flex gap-3">

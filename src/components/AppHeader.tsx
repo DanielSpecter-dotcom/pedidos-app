@@ -23,8 +23,8 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
     <>
       <header className="w-full h-16 shrink-0 flex justify-between items-center px-5 sm:px-8 z-[40] sticky top-0 glass-header shadow-sm safe-top">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 bg-gradient-to-br from-guinda to-guinda-dark rounded-[14px] flex items-center justify-center text-white font-black text-xl shadow-lg shadow-guinda/20 border border-white/10 ring-2 ring-white/50">
-            M
+          <div className="w-11 h-11 bg-gradient-to-br from-guinda to-guinda-dark rounded-[14px] flex items-center justify-center shadow-lg shadow-guinda/20 border border-white/10 ring-2 ring-white/50 overflow-hidden p-1">
+            <img src="/logo2.png" alt="Melchorita" className="w-full h-full object-contain" />
           </div>
           <div className="flex flex-col justify-center">
             <h1 className="text-lg font-black text-slate-900 leading-tight tracking-tight">Melchorita</h1>

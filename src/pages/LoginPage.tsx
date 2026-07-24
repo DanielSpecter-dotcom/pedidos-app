@@ -24,8 +24,8 @@ export function LoginPage() {
   return (
     <div className="bg-gray-50 flex items-center justify-center min-h-[100dvh] px-4 w-full">
       <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 w-full max-w-sm text-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-guinda to-guinda-dark rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg shadow-guinda/20 mx-auto mb-6">
-          M
+        <div className="w-16 h-16 bg-gradient-to-br from-guinda to-guinda-dark rounded-2xl flex items-center justify-center shadow-lg shadow-guinda/20 mx-auto mb-6 overflow-hidden p-1.5">
+          <img src="/logo2.png" alt="Melchorita" className="w-full h-full object-contain" />
         </div>
 
         <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Melchorita</h1>
