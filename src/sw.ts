@@ -5,6 +5,15 @@ declare const self: ServiceWorkerGlobalScope
 
 precacheAndRoute(self.__WB_MANIFEST)
 
+// iOS es inconsistente cerrando/reabriendo la PWA — sin esto, una versión
+// nueva del SW puede quedar en "waiting" indefinidamente y el push nunca
+// llega porque no hay un worker activo escuchándolo. Activa cada versión
+// nueva de inmediato en vez de esperar a que se cierren todas las pestañas.
+self.skipWaiting()
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
   const data = event.data.json() as { title: string; body: string; pedidoId?: number }
