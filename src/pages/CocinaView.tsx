@@ -33,6 +33,11 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const { enviarAvisoMesero } = useNotifications()
   const [pedidosCola, setPedidosCola] = useState<PedidoCola[]>([])
   const [cargando, setCargando] = useState(true)
+  // Distinto de "cargando": solo true antes del primer resultado. El resto
+  // de los refrescos (realtime, marcar listo, botón Actualizar) no deben
+  // tapar la cola con el spinner — el mesero pierde el lugar en el que
+  // estaba leyendo cada vez que eso pasa.
+  const [cargandoInicial, setCargandoInicial] = useState(true)
   const [error, setError] = useState(false)
   const [ultimaSync, setUltimaSync] = useState<Date | null>(null)
   const [pendientesDespacho, setPendientesDespacho] = useState<Set<number>>(new Set())
@@ -179,6 +184,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
       setError(true)
     } finally {
       setCargando(false)
+      setCargandoInicial(false)
     }
   }, [productos, categorias, meseros])
 
@@ -363,12 +369,12 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
               ))}
             </div>
             <div className="flex-1 overflow-y-auto thin-scrollbar p-4 sm:p-5 grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
-              {cargando ? (
+              {cargandoInicial ? (
                 <div className="col-span-full min-h-[260px] flex flex-col items-center justify-center gap-3 text-slate-400">
                   <div className="w-10 h-10 border-[4px] border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
                   <span className="text-xs font-black uppercase tracking-widest">Cargando cola...</span>
                 </div>
-              ) : error ? (
+              ) : error && pedidosCola.length === 0 ? (
                 <div className="col-span-full min-h-[260px] flex flex-col items-center justify-center text-red-400 gap-2">
                   <span className="text-3xl">!</span>
                   <span className="text-xs font-bold">No se pudo cargar la cola de cocina.</span>
