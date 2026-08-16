@@ -459,8 +459,9 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
                 className="flex-1"
               />
               <input
-                type="number"
-                min={1}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={cantidadTexto}
                 onChange={(e) => setCantidadTexto(e.target.value)}
                 onBlur={() => setCantidadTexto(String(Math.max(1, parseInt(cantidadTexto) || 1)))}
