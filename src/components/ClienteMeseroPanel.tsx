@@ -42,13 +42,13 @@ export function ClienteMeseroPanel() {
         <div className="flex gap-2">
           <input
             type="tel"
-            placeholder="DNI (opcional)"
+            placeholder="DNI"
             value={dni}
             onChange={(e) => {
               setDni(e.target.value)
               buscarClientePorDni(e.target.value)
             }}
-            className="w-[30%] bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold focus:bg-white focus:border-amarillo focus:ring-4 focus:ring-amarillo/20 outline-none text-center transition-all placeholder-slate-400 shadow-inner"
+            className="w-[96px] shrink-0 bg-slate-50 border border-slate-200 rounded-2xl px-2 py-3 text-xs font-bold focus:bg-white focus:border-amarillo focus:ring-4 focus:ring-amarillo/20 outline-none text-center transition-all placeholder-slate-400 shadow-inner"
           />
           <input
             type="text"

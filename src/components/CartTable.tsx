@@ -46,13 +46,13 @@ export function CartTable({ onRowClick }: CartTableProps) {
                   <td className="py-3 px-2 text-right align-middle font-bold text-gray-700 text-xs whitespace-nowrap">
                     S/ {subtotal.toFixed(2)}
                   </td>
-                  <td className="py-3 text-center align-middle pr-2">
+                  <td className="py-1.5 text-center align-middle pr-1">
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         removeFromCart(index)
                       }}
-                      className="w-6 h-6 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 flex items-center justify-center text-sm transition-colors"
+                      className="w-10 h-10 rounded-full hover:bg-red-50 active:bg-red-100 text-gray-300 hover:text-red-500 flex items-center justify-center text-base transition-colors"
                     >
                       ✕
                     </button>

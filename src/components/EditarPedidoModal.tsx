@@ -542,7 +542,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
                       <button
                         onClick={() => setPersonalizeIndex(index)}
                         title="Personalizar"
-                        className="w-7 h-7 rounded-full hover:bg-guinda/10 text-slate-300 hover:text-guinda flex items-center justify-center text-sm transition-colors shrink-0"
+                        className="w-9 h-9 rounded-full hover:bg-guinda/10 active:bg-guinda/15 text-slate-300 hover:text-guinda flex items-center justify-center text-base transition-colors shrink-0"
                       >
                         ✏️
                       </button>
@@ -550,12 +550,12 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
                     {!esServido ? (
                       <button
                         onClick={() => eliminarPlatoEditar(index)}
-                        className="w-7 h-7 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 flex items-center justify-center text-sm transition-colors shrink-0"
+                        className="w-9 h-9 rounded-full hover:bg-red-50 active:bg-red-100 text-gray-300 hover:text-red-500 flex items-center justify-center text-base transition-colors shrink-0"
                       >
                         ✕
                       </button>
                     ) : (
-                      <div className="w-7 shrink-0"></div>
+                      <div className="w-9 shrink-0"></div>
                     )}
                   </div>
                 )

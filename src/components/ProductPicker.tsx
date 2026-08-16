@@ -75,28 +75,30 @@ export function ProductPicker() {
 
       <ExtrasCheckboxList extras={extrasCheckbox} seleccionados={extrasSeleccionados} onToggle={toggleExtra} />
 
-      <div className="flex justify-between items-center gap-3">
-        <label className="flex items-center gap-2.5 text-[11px] font-bold text-slate-500 uppercase cursor-pointer whitespace-nowrap bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors select-none">
-          <input
-            type="checkbox"
-            checked={esLlevar}
-            onChange={(e) => setEsLlevar(e.target.checked)}
-            className="accent-amarillo w-4 h-4 rounded shadow-sm"
-          />
-          <span>P/ Llevar</span>
-        </label>
-        <label className="flex items-center gap-2.5 text-[11px] font-bold text-slate-500 uppercase cursor-pointer whitespace-nowrap bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors select-none">
-          <input
-            type="checkbox"
-            checked={esMediaPorcion}
-            onChange={(e) => setEsMediaPorcion(e.target.checked)}
-            className="accent-amarillo w-4 h-4 rounded shadow-sm"
-          />
-          <span>½ Porción</span>
-        </label>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
+        <div className="flex gap-2">
+          <label className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 text-[11px] font-bold text-slate-500 uppercase cursor-pointer whitespace-nowrap bg-slate-50 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors select-none">
+            <input
+              type="checkbox"
+              checked={esLlevar}
+              onChange={(e) => setEsLlevar(e.target.checked)}
+              className="accent-amarillo w-4 h-4 rounded shadow-sm shrink-0"
+            />
+            <span>P/ Llevar</span>
+          </label>
+          <label className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 text-[11px] font-bold text-slate-500 uppercase cursor-pointer whitespace-nowrap bg-slate-50 px-3 py-2.5 sm:py-2 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors select-none">
+            <input
+              type="checkbox"
+              checked={esMediaPorcion}
+              onChange={(e) => setEsMediaPorcion(e.target.checked)}
+              className="accent-amarillo w-4 h-4 rounded shadow-sm shrink-0"
+            />
+            <span>½ Porción</span>
+          </label>
+        </div>
         <button
           onClick={handleAgregar}
-          className="bg-gradient-to-r from-amarillo to-amber-400 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-extrabold h-10 px-5 sm:px-6 rounded-xl shadow-lg shadow-amarillo/30 text-[11px] uppercase tracking-wider active:scale-95 transition-all flex-1 sm:flex-none flex justify-center items-center gap-1.5 focus:ring-4 focus:ring-amarillo/30"
+          className="w-full sm:w-auto bg-gradient-to-r from-amarillo to-amber-400 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-extrabold h-11 sm:h-10 px-5 sm:px-6 rounded-xl shadow-lg shadow-amarillo/30 text-[11px] uppercase tracking-wider active:scale-95 transition-all flex justify-center items-center gap-1.5 focus:ring-4 focus:ring-amarillo/30"
         >
           Agregar
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
