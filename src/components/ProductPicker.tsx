@@ -16,6 +16,7 @@ export function ProductPicker() {
   // un número de más de un dígito ni borrarlo para reemplazarlo.
   const [cantidadTexto, setCantidadTexto] = useState('1')
   const [esLlevar, setEsLlevar] = useState(false)
+  const [esMediaPorcion, setEsMediaPorcion] = useState(false)
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<Set<number>>(new Set())
 
   const productoSeleccionado = productos.find((p) => p.ProductoID === parseInt(productoId))
@@ -40,11 +41,12 @@ export function ProductPicker() {
     }
     const cantidad = Math.max(1, parseInt(cantidadTexto) || 1)
     const extrasElegidos = extras.filter((ex) => extrasSeleccionados.has(ex.ExtraID))
-    addToCart(productoSeleccionado, cantidad, esLlevar, extrasElegidos)
+    addToCart(productoSeleccionado, cantidad, esLlevar, extrasElegidos, esMediaPorcion)
 
     setProductoId('')
     setCantidadTexto('1')
     setEsLlevar(false)
+    setEsMediaPorcion(false)
     setExtrasSeleccionados(new Set())
   }
 
@@ -82,6 +84,15 @@ export function ProductPicker() {
             className="accent-amarillo w-4 h-4 rounded shadow-sm"
           />
           <span>P/ Llevar</span>
+        </label>
+        <label className="flex items-center gap-2.5 text-[11px] font-bold text-slate-500 uppercase cursor-pointer whitespace-nowrap bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors select-none">
+          <input
+            type="checkbox"
+            checked={esMediaPorcion}
+            onChange={(e) => setEsMediaPorcion(e.target.checked)}
+            className="accent-amarillo w-4 h-4 rounded shadow-sm"
+          />
+          <span>½ Porción</span>
         </label>
         <button
           onClick={handleAgregar}

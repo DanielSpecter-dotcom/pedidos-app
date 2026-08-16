@@ -22,7 +22,7 @@ interface CartContextValue {
   setDelivery: (patch: Partial<DeliveryInfo>) => void
   buscarClientePorDni: (dni: string) => Promise<void>
 
-  addToCart: (producto: Producto, cantidad: number, esLlevar: boolean, extras: Extra[]) => void
+  addToCart: (producto: Producto, cantidad: number, esLlevar: boolean, extras: Extra[], esMediaPorcion?: boolean) => void
   updateCartItem: (index: number, patch: Partial<CartItem>) => void
   removeFromCart: (index: number) => void
   confirmarPedido: () => Promise<void>
@@ -92,10 +92,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function addToCart(producto: Producto, cantidad: number, esLlevar: boolean, extras: Extra[]) {
-    const precioBase = producto.Precio
+  function addToCart(producto: Producto, cantidad: number, esLlevar: boolean, extras: Extra[], esMediaPorcion = false) {
+    const precioBase = esMediaPorcion ? producto.Precio / 2 : producto.Precio
     const precioConExtras = precioBase + extras.reduce((s, ex) => s + ex.PrecioUnitario, 0)
-    const notas = extras.map((ex) => `+${ex.Nombre}`).join(', ')
+    const notasPartes = extras.map((ex) => `+${ex.Nombre}`)
+    if (esMediaPorcion) notasPartes.unshift('½ PORCIÓN')
+    const notas = notasPartes.join(', ')
 
     setCarrito((prev) => {
       const idx = prev.findIndex(

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAppData } from '../contexts/AppDataContext'
+import { desuscribirPush, estaSuscripto, iosRequiereInstalar, pushSoportado, suscribirPush } from '../lib/pushNotifications'
 
 interface AppHeaderProps {
   vista: 'pedidos' | 'cocina'
@@ -11,8 +12,35 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
   const { logout } = useAuth()
   const { loading, error } = useAppData()
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const [suscripto, setSuscripto] = useState(false)
+  const [cambiandoSuscripcion, setCambiandoSuscripcion] = useState(false)
 
   const estadoConexion = error ? 'Error de conexión' : loading ? 'Conectando...' : 'En línea'
+
+  useEffect(() => {
+    if (pushSoportado()) estaSuscripto().then(setSuscripto)
+  }, [])
+
+  async function alternarNotificaciones() {
+    if (iosRequiereInstalar()) {
+      alert('Para recibir notificaciones en iPhone/iPad, primero agregá esta app a tu pantalla de inicio (compartir → "Agregar a inicio").')
+      return
+    }
+    setCambiandoSuscripcion(true)
+    try {
+      if (suscripto) {
+        await desuscribirPush()
+        setSuscripto(false)
+      } else {
+        await suscribirPush()
+        setSuscripto(true)
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo cambiar el estado de notificaciones')
+    } finally {
+      setCambiandoSuscripcion(false)
+    }
+  }
 
   function seleccionarMenuMovil(v: 'pedidos' | 'cocina') {
     onChangeVista(v)
@@ -63,6 +91,16 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />
             </svg>
           </button>
+          {pushSoportado() && (
+            <button
+              onClick={alternarNotificaciones}
+              disabled={cambiandoSuscripcion}
+              title={suscripto ? 'Notificaciones activadas' : 'Activar notificaciones'}
+              className={`hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center border transition-all disabled:opacity-50 ${suscripto ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-100/80 border-slate-200 text-slate-500 hover:bg-slate-200'}`}
+            >
+              {suscripto ? '🔔' : '🔕'}
+            </button>
+          )}
           <button
             onClick={() => logout()}
             className="text-[11px] font-bold text-slate-400 uppercase tracking-wide hover:text-red-500 transition-colors hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-red-50"
@@ -90,6 +128,16 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">⌁</span>
           Cocina
         </button>
+        {pushSoportado() && (
+          <button
+            onClick={alternarNotificaciones}
+            disabled={cambiandoSuscripcion}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 disabled:opacity-50"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">{suscripto ? '🔔' : '🔕'}</span>
+            {suscripto ? 'Notificaciones activas' : 'Activar notificaciones'}
+          </button>
+        )}
         <div className="my-1 border-t border-slate-100"></div>
         <button
           onClick={() => logout()}

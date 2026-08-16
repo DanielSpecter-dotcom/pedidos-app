@@ -66,6 +66,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   function enviarAvisoMesero(data: { pedidoId: number; labelUbicacion: string; clienteNombre: string }) {
     channelRef.current?.send({ type: 'broadcast', event: EVENTO_PEDIDO_LISTO, payload: data })
+
+    // Push real (llega con la app cerrada/pantalla bloqueada), además del
+    // broadcast de arriba que solo avisa si la app está abierta. Si falla
+    // (sin suscriptos, función caída, etc.) no debe romper el flujo de
+    // cocina — el broadcast in-app ya se mandó.
+    supabase.functions
+      .invoke('send-push', {
+        body: { title: 'Pedido listo', body: `${data.labelUbicacion} — ${data.clienteNombre}`, pedidoId: data.pedidoId },
+      })
+      .catch((err) => console.error('Error enviando push:', err))
   }
 
   function descartarAviso(id: string) {

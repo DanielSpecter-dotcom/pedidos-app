@@ -55,6 +55,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
   // number, el input se auto-reseteaba a "1" apenas se intentaba borrar).
   const [cantidadTexto, setCantidadTexto] = useState('1')
   const [esLlevar, setEsLlevar] = useState(false)
+  const [esMediaPorcion, setEsMediaPorcion] = useState(false)
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<Set<number>>(new Set())
 
   const productoSeleccionado = productos.find((p) => p.ProductoID === parseInt(productoId))
@@ -240,8 +241,11 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
     }
     const cantidad = Math.max(1, parseInt(cantidadTexto) || 1)
     const extrasElegidos = extras.filter((ex) => extrasSeleccionados.has(ex.ExtraID))
-    const precioConExtras = productoSeleccionado.Precio + extrasElegidos.reduce((s, ex) => s + ex.PrecioUnitario, 0)
-    const notas = extrasElegidos.map((ex) => `+${ex.Nombre}`).join(', ')
+    const precioBase = esMediaPorcion ? productoSeleccionado.Precio / 2 : productoSeleccionado.Precio
+    const precioConExtras = precioBase + extrasElegidos.reduce((s, ex) => s + ex.PrecioUnitario, 0)
+    const notasPartes = extrasElegidos.map((ex) => `+${ex.Nombre}`)
+    if (esMediaPorcion) notasPartes.unshift('½ PORCIÓN')
+    const notas = notasPartes.join(', ')
 
     setPlatos((prev) => [
       ...prev,
@@ -252,7 +256,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
         nombre: productoSeleccionado.Nombre,
         cantidad,
         precioUnit: precioConExtras,
-        precioBase: productoSeleccionado.Precio,
+        precioBase,
         notas,
         esLlevar,
         estadoPlato: 'NUEVO',
@@ -263,6 +267,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
     setProductoId('')
     setCantidadTexto('1')
     setEsLlevar(false)
+    setEsMediaPorcion(false)
     setExtrasSeleccionados(new Set())
   }
 
