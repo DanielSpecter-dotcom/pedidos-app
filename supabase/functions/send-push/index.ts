@@ -7,11 +7,23 @@ webpush.setVapidDetails('mailto:soporte@melchorita.rest', vapidPublicKey, vapidP
 
 const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
+// El navegador manda un preflight OPTIONS antes del POST real porque la
+// llamada es cross-origin (la app en Vercel llamando a Supabase) y lleva
+// headers custom (Authorization). Sin esto, el navegador bloquea la
+// respuesta antes de que el código de la app la vea — curl no lo sufre
+// porque el preflight es un mecanismo exclusivo de navegadores.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+
   const { title, body, pedidoId } = await req.json()
 
   const { data: subs, error } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth')
-  if (error) return new Response(error.message, { status: 500 })
+  if (error) return new Response(error.message, { status: 500, headers: corsHeaders })
 
   const resultados = await Promise.allSettled(
     (subs ?? []).map((sub) =>
@@ -32,6 +44,6 @@ Deno.serve(async (req: Request) => {
   }
 
   return new Response(JSON.stringify({ enviados: resultados.filter((r) => r.status === 'fulfilled').length }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })
