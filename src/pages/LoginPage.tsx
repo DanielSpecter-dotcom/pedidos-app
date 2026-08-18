@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { IconArrowRight, IconLock, IconUser } from '../components/icons'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -37,7 +38,7 @@ export function LoginPage() {
               Usuario del Mesero
             </label>
             <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:bg-white focus-within:border-guinda focus-within:ring-2 focus-within:ring-guinda/10 transition-all">
-              <span className="text-gray-400 mr-2">👤</span>
+              <IconUser className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
               <input
                 type="text"
                 required
@@ -55,7 +56,7 @@ export function LoginPage() {
               Contraseña
             </label>
             <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:bg-white focus-within:border-guinda focus-within:ring-2 focus-within:ring-guinda/10 transition-all">
-              <span className="text-gray-400 mr-2">🔒</span>
+              <IconLock className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
               <input
                 type="password"
                 required
@@ -73,15 +74,15 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-gradient-to-r from-guinda to-guinda-light text-white font-black py-3.5 rounded-xl text-sm shadow-lg shadow-guinda/30 active:scale-95 transition-all mt-4 flex justify-center items-center gap-2 hover:shadow-xl hover:shadow-guinda/40 disabled:opacity-70"
+            className="w-full bg-gradient-to-r from-guinda to-guinda-light text-white font-black py-3.5 rounded-xl text-sm shadow-lg shadow-guinda/30 active:scale-95 transition-all mt-4 flex justify-center items-center gap-2 hover:shadow-xl hover:shadow-guinda/40 disabled:opacity-70 focus:outline-none focus-visible:ring-4 focus-visible:ring-guinda/30"
           >
             {submitting ? (
               <>
-                <span className="animate-spin inline-block">↻</span> Validando...
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block"></span> Validando...
               </>
             ) : (
               <>
-                INICIAR SESIÓN <span className="text-lg leading-none">➜</span>
+                INICIAR SESIÓN <IconArrowRight className="w-4 h-4" />
               </>
             )}
           </button>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { extrasPorCategoria } from '../lib/extras'
+import { IconClose, IconTrash } from './icons'
 
 interface PersonalizeModalProps {
   titulo: string
@@ -26,8 +27,8 @@ export function PersonalizeModal({ titulo, categoriaId, precioBase, onSave, onCl
   }
 
   function limpiarPersonalizacion() {
-    onSave({ precioUnit: precioBase, notas: '' })
-    onClose()
+    setContadores(Object.fromEntries(extrasModal.map((ex) => [ex.ExtraID, 0])))
+    setNotaManual('')
   }
 
   function guardarCambiosModal() {
@@ -44,7 +45,10 @@ export function PersonalizeModal({ titulo, categoriaId, precioBase, onSave, onCl
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] transition-opacity fade-animate" onClick={onClose}></div>
+      {/* Sin onClick: perder notas/extras recién elegidos por un toque accidental
+          fuera del modal es la fricción más común en celular. Cerrar es siempre
+          explícito (✕, el tirador o ACTUALIZAR). */}
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] transition-opacity fade-animate"></div>
       <div className="relative w-full md:w-[480px] bg-white rounded-[24px] sm:rounded-[32px] shadow-2xl overflow-hidden modal-animate flex flex-col h-auto max-h-[calc(100dvh-1.5rem)] border border-slate-100 z-10 max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw]">
         <div className="w-full flex justify-center pt-3 pb-2 md:hidden bg-white cursor-pointer" onClick={onClose}>
           <div className="w-10 h-1.5 bg-slate-200 rounded-full"></div>
@@ -54,9 +58,10 @@ export function PersonalizeModal({ titulo, categoriaId, precioBase, onSave, onCl
           <h3 className="text-xl font-extrabold text-slate-800">{titulo}</h3>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold hover:bg-slate-200 hover:text-slate-700 transition-colors active:scale-90"
+            aria-label="Cerrar"
+            className="w-11 h-11 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-colors active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
           >
-            ✕
+            <IconClose className="w-4 h-4" />
           </button>
         </div>
 
@@ -88,14 +93,16 @@ export function PersonalizeModal({ titulo, categoriaId, precioBase, onSave, onCl
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => cambiarExtra(ex.ExtraID, -1)}
-                    className="w-9 h-9 rounded-xl bg-gray-100 font-bold text-gray-500 active:scale-90 transition-transform"
+                    aria-label={`Restar ${ex.Nombre}`}
+                    className="w-11 h-11 rounded-xl bg-gray-100 font-bold text-gray-500 active:scale-90 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
                   >
                     -
                   </button>
                   <span className="font-bold w-7 text-center text-sm">{contadores[ex.ExtraID] || 0}</span>
                   <button
                     onClick={() => cambiarExtra(ex.ExtraID, 1)}
-                    className={`w-9 h-9 rounded-xl ${ex.EsAlterno ? 'bg-green-100 text-green-700' : 'bg-amarillo text-gray-800'} font-bold active:scale-90 transition-transform`}
+                    aria-label={`Sumar ${ex.Nombre}`}
+                    className={`w-11 h-11 rounded-xl ${ex.EsAlterno ? 'bg-green-100 text-green-700' : 'bg-amarillo text-gray-800'} font-bold active:scale-90 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50`}
                   >
                     +
                   </button>
@@ -115,13 +122,13 @@ export function PersonalizeModal({ titulo, categoriaId, precioBase, onSave, onCl
           </div>
           <button
             onClick={limpiarPersonalizacion}
-            className="h-11 px-3 sm:px-4 rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-wide active:scale-95 transition-all border border-slate-200 hover:border-red-200 flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap"
+            className="h-11 px-3 sm:px-4 rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-wide active:scale-95 transition-all border border-slate-200 hover:border-red-200 flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           >
-            🗑️ Limpiar
+            <IconTrash className="w-3.5 h-3.5" /> Limpiar
           </button>
           <button
             onClick={guardarCambiosModal}
-            className="col-span-2 w-full min-h-11 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3 px-4 sm:py-3.5 sm:px-5 rounded-2xl shadow-lg shadow-guinda/20 active:scale-95 transition-all text-xs sm:text-sm tracking-wide whitespace-nowrap"
+            className="col-span-2 w-full min-h-11 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3 px-4 sm:py-3.5 sm:px-5 rounded-2xl shadow-lg shadow-guinda/20 active:scale-95 transition-all text-xs sm:text-sm tracking-wide whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
           >
             ACTUALIZAR
           </button>

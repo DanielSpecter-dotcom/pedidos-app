@@ -12,6 +12,7 @@ import { PedidosActivosModal } from '../components/PedidosActivosModal'
 import { useCart } from '../contexts/CartContext'
 import { useAppData } from '../contexts/AppDataContext'
 import { supabase } from '../lib/supabaseClient'
+import { IconArrowRight, IconClipboard } from '../components/icons'
 
 export function PedidosView() {
   const { carrito, tipoServicio, total, guardando, confirmarPedido, updateCartItem } = useCart()
@@ -53,9 +54,9 @@ export function PedidosView() {
           <div className="flex justify-end px-5 lg:px-0 pt-3 lg:pt-0 lg:pb-1">
             <button
               onClick={() => setMostrarPedidosActivos(true)}
-              className="relative shrink-0 flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2 text-xs font-bold text-guinda shadow-soft hover:border-guinda/40 active:scale-95 transition-all"
+              className="relative shrink-0 flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2 text-xs font-bold text-guinda shadow-soft hover:border-guinda/40 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
             >
-              📋 Pedidos Activos
+              <IconClipboard className="w-4 h-4" /> Pedidos Activos
               {pedidosActivosCount > 0 && (
                 <span className="bg-guinda text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {pedidosActivosCount}
@@ -86,10 +87,10 @@ export function PedidosView() {
               <button
                 onClick={() => handleConfirmarPedido()}
                 disabled={guardando}
-                className="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-extrabold py-4 px-8 rounded-2xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-3 hover:shadow-xl hover:scale-[1.02] border border-emerald-400/50 disabled:opacity-70"
+                className="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-extrabold py-4 px-8 rounded-2xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-3 hover:shadow-xl hover:scale-[1.02] border border-emerald-400/50 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
               >
                 <span className="tracking-wide uppercase text-sm">{guardando ? 'Enviando...' : 'Enviar a Cocina'}</span>
-                {!guardando && <span className="text-xl leading-none">➜</span>}
+                {!guardando && <IconArrowRight className="w-5 h-5" />}
               </button>
             </div>
           </div>

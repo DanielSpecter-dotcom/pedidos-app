@@ -1,4 +1,5 @@
 import { useCart } from '../contexts/CartContext'
+import { IconPhone, IconPin, IconTruck, IconUser } from './icons'
 
 export function DeliveryPanel() {
   const { delivery, setDelivery } = useCart()
@@ -9,8 +10,8 @@ export function DeliveryPanel() {
       className="bg-white lg:rounded-[24px] shadow-glass border-y lg:border border-slate-200/60 flex flex-col lg:h-full lg:flex-1 w-full"
     >
       <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-4 bg-white lg:rounded-t-[24px]">
-        <div className="w-12 h-12 bg-gradient-to-br from-guinda to-guinda-light rounded-[16px] flex items-center justify-center text-2xl shrink-0 shadow-soft shadow-guinda/20 text-white">
-          🛵
+        <div className="w-12 h-12 bg-gradient-to-br from-guinda to-guinda-light rounded-[16px] flex items-center justify-center shrink-0 shadow-soft shadow-guinda/20 text-white">
+          <IconTruck className="w-6 h-6" />
         </div>
         <div>
           <h2 className="font-extrabold text-slate-800 text-lg leading-tight">Datos de Envío</h2>
@@ -25,8 +26,8 @@ export function DeliveryPanel() {
               Destinatario <span className="text-red-400">*</span>
             </label>
             <div className="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-guinda focus-within:ring-4 focus-within:ring-guinda/10 transition-all shadow-sm">
-              <div className="w-12 h-12 bg-slate-50 flex items-center justify-center text-xl border-r border-slate-100 shrink-0 text-slate-400">
-                👤
+              <div className="w-12 h-12 bg-slate-50 flex items-center justify-center border-r border-slate-100 shrink-0 text-slate-400">
+                <IconUser className="w-5 h-5" />
               </div>
               <input
                 type="text"
@@ -42,8 +43,8 @@ export function DeliveryPanel() {
               Dirección <span className="text-red-400">*</span>
             </label>
             <div className="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-guinda focus-within:ring-4 focus-within:ring-guinda/10 transition-all shadow-sm">
-              <div className="w-12 h-12 bg-slate-50 flex items-center justify-center text-xl border-r border-slate-100 shrink-0 text-slate-400">
-                📍
+              <div className="w-12 h-12 bg-slate-50 flex items-center justify-center border-r border-slate-100 shrink-0 text-slate-400">
+                <IconPin className="w-5 h-5" />
               </div>
               <input
                 type="text"
@@ -59,8 +60,8 @@ export function DeliveryPanel() {
               Teléfono <span className="text-red-400">*</span>
             </label>
             <div className="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-guinda focus-within:ring-4 focus-within:ring-guinda/10 transition-all shadow-sm">
-              <div className="w-12 h-12 bg-slate-50 flex items-center justify-center text-xl border-r border-slate-100 shrink-0 text-slate-400">
-                📞
+              <div className="w-12 h-12 bg-slate-50 flex items-center justify-center border-r border-slate-100 shrink-0 text-slate-400">
+                <IconPhone className="w-5 h-5" />
               </div>
               <input
                 type="tel"

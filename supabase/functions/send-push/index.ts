@@ -7,11 +7,6 @@ webpush.setVapidDetails('mailto:soporte@melchorita.rest', vapidPublicKey, vapidP
 
 const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-// El navegador manda un preflight OPTIONS antes del POST real porque la
-// llamada es cross-origin (la app en Vercel llamando a Supabase) y lleva
-// headers custom (Authorization). Sin esto, el navegador bloquea la
-// respuesta antes de que el código de la app la vea — curl no lo sufre
-// porque el preflight es un mecanismo exclusivo de navegadores.
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -20,7 +15,14 @@ const corsHeaders = {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
+  const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '')
+  const { data: { user } } = authHeader ? await supabaseAdmin.auth.getUser(authHeader) : { data: { user: null } }
+  if (!user) return new Response('No autorizado', { status: 401, headers: corsHeaders })
+
   const { title, body, pedidoId } = await req.json()
+  if (typeof title !== 'string' || typeof body !== 'string' || title.length > 100 || body.length > 200) {
+    return new Response('Payload inválido', { status: 400, headers: corsHeaders })
+  }
 
   const { data: subs, error } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth')
   if (error) return new Response(error.message, { status: 500, headers: corsHeaders })

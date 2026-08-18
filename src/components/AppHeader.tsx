@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAppData } from '../contexts/AppDataContext'
+import { useNotifications } from '../contexts/NotificationContext'
 import { desuscribirPush, estaSuscripto, iosRequiereInstalar, pushSoportado, suscribirPush } from '../lib/pushNotifications'
+import { IconBell, IconBellOff, IconFlame, IconHome, IconLogout } from './icons'
 
 interface AppHeaderProps {
   vista: 'pedidos' | 'cocina'
@@ -11,6 +13,7 @@ interface AppHeaderProps {
 export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
   const { logout } = useAuth()
   const { loading, error } = useAppData()
+  const { notificar } = useNotifications()
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [suscripto, setSuscripto] = useState(false)
   const [cambiandoSuscripcion, setCambiandoSuscripcion] = useState(false)
@@ -23,7 +26,7 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
 
   async function alternarNotificaciones() {
     if (iosRequiereInstalar()) {
-      alert('Para recibir notificaciones en iPhone/iPad, primero agregá esta app a tu pantalla de inicio (compartir → "Agregar a inicio").')
+      notificar('Para recibir notificaciones en iPhone/iPad, primero agregá esta app a tu pantalla de inicio (compartir → "Agregar a inicio").', 'error')
       return
     }
     setCambiandoSuscripcion(true)
@@ -36,7 +39,7 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
         setSuscripto(true)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'No se pudo cambiar el estado de notificaciones')
+      notificar(err instanceof Error ? err.message : 'No se pudo cambiar el estado de notificaciones', 'error')
     } finally {
       setCambiandoSuscripcion(false)
     }
@@ -70,13 +73,13 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
           <div className="hidden sm:flex items-center gap-1.5 rounded-2xl bg-slate-100/80 p-1 border border-slate-200">
             <button
               onClick={() => onChangeVista('pedidos')}
-              className={`px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500 border border-transparent transition-all ${vista === 'pedidos' ? 'view-tab-active' : ''}`}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500 border border-transparent transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50 ${vista === 'pedidos' ? 'view-tab-active' : ''}`}
             >
               Pedidos
             </button>
             <button
               onClick={() => onChangeVista('cocina')}
-              className={`px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500 border border-transparent transition-all ${vista === 'cocina' ? 'view-tab-active' : ''}`}
+              className={`px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500 border border-transparent transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50 ${vista === 'cocina' ? 'view-tab-active' : ''}`}
             >
               Cocina
             </button>
@@ -85,7 +88,7 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
             onClick={() => setMenuAbierto((v) => !v)}
             aria-label="Abrir menú"
             aria-expanded={menuAbierto}
-            className="sm:hidden w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center text-white border border-slate-700 active:scale-90 transition-all cursor-pointer hover:bg-slate-800"
+            className="sm:hidden w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center text-white border border-slate-700 active:scale-90 transition-all cursor-pointer hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-guinda/60"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />
@@ -96,9 +99,10 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
               onClick={alternarNotificaciones}
               disabled={cambiandoSuscripcion}
               title={suscripto ? 'Notificaciones activadas' : 'Activar notificaciones'}
-              className={`hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center border transition-all disabled:opacity-50 ${suscripto ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-100/80 border-slate-200 text-slate-500 hover:bg-slate-200'}`}
+              aria-label={suscripto ? 'Notificaciones activadas' : 'Activar notificaciones'}
+              className={`hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center border transition-all disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-guinda/60 ${suscripto ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-100/80 border-slate-200 text-slate-500 hover:bg-slate-200'}`}
             >
-              {suscripto ? '🔔' : '🔕'}
+              {suscripto ? <IconBell className="w-5 h-5" /> : <IconBellOff className="w-5 h-5" />}
             </button>
           )}
           <button
@@ -116,34 +120,42 @@ export function AppHeader({ vista, onChangeVista }: AppHeaderProps) {
         <div className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Navegación</div>
         <button
           onClick={() => seleccionarMenuMovil('pedidos')}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-guinda-50 text-guinda">⌂</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-guinda-50 text-guinda">
+            <IconHome className="w-4 h-4" />
+          </span>
           Pedidos
         </button>
         <button
           onClick={() => seleccionarMenuMovil('cocina')}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">⌁</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+            <IconFlame className="w-4 h-4" />
+          </span>
           Cocina
         </button>
         {pushSoportado() && (
           <button
             onClick={alternarNotificaciones}
             disabled={cambiandoSuscripcion}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 disabled:opacity-50"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">{suscripto ? '🔔' : '🔕'}</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              {suscripto ? <IconBell className="w-4 h-4" /> : <IconBellOff className="w-4 h-4" />}
+            </span>
             {suscripto ? 'Notificaciones activas' : 'Activar notificaciones'}
           </button>
         )}
         <div className="my-1 border-t border-slate-100"></div>
         <button
           onClick={() => logout()}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 active:bg-red-100"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 active:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">↪</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
+            <IconLogout className="w-4 h-4" />
+          </span>
           Cerrar sesión
         </button>
       </div>

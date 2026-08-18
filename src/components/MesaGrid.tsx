@@ -1,6 +1,7 @@
 import { useAppData } from '../contexts/AppDataContext'
 import { useCart } from '../contexts/CartContext'
 import { formatDuracion, minutosDesde } from '../lib/tiempo'
+import { IconCheckCircle, IconFlame, IconPin } from './icons'
 
 interface MesaGridProps {
   onMesaOcupadaClick: (mesaId: number, numeroMesa: string) => void
@@ -15,14 +16,14 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
       id="panelMapa"
       className="bg-white lg:rounded-[24px] shadow-glass border-y lg:border border-slate-200/60 flex flex-col relative min-h-[400px] lg:h-full lg:flex-1 w-full z-10"
     >
-      <div className="px-5 py-3.5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 lg:rounded-t-[24px]">
+      <div className="px-5 py-3 sm:py-3.5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-white/80 backdrop-blur-md sticky top-0 z-10 lg:rounded-t-[24px]">
         <h2 className="font-extrabold text-slate-800 flex items-center gap-2.5 text-sm uppercase tracking-wide">
-          📍 Salón Principal{' '}
+          <IconPin className="w-4 h-4 text-guinda shrink-0" /> Salón Principal{' '}
           <span className="bg-guinda/10 text-guinda px-2.5 py-1 rounded-xl text-xs font-black border border-guinda/20">
             {mesas.length}
           </span>
         </h2>
-        <div className="flex gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden xs:flex">
+        <div className="flex gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full border-2 border-slate-200 bg-white shadow-soft"></span> Libre
           </div>
@@ -59,9 +60,9 @@ export function MesaGrid({ onMesaOcupadaClick }: MesaGridProps) {
                 {isOcupada && (
                   <span
                     title={`${info?.estado === 'SERVIDO' ? 'Servido — falta cobrar' : 'En cocina'} · Ocupada hace ${formatDuracion(minutosOcupada)}`}
-                    className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white shadow-sm border border-red-200 flex items-center justify-center text-[10px]"
+                    className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white shadow-sm border border-red-200 flex items-center justify-center ${info?.estado === 'SERVIDO' ? 'text-emerald-500' : 'text-amber-500'}`}
                   >
-                    {info?.estado === 'SERVIDO' ? '✅' : '🍳'}
+                    {info?.estado === 'SERVIDO' ? <IconCheckCircle className="w-3 h-3" /> : <IconFlame className="w-3 h-3" />}
                   </span>
                 )}
               </div>

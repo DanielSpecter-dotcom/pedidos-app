@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Producto } from '../types'
+import { IconSearch } from './icons'
 
 interface ProductoSearchSelectProps {
   productos: Producto[]
@@ -58,13 +59,14 @@ export function ProductoSearchSelect({ productos, value, onChange, placeholder, 
 
   return (
     <div ref={containerRef} className={`relative min-w-0 ${className || ''}`}>
+      <IconSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
       <input
         type="text"
         value={query}
         onChange={handleInputChange}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className="w-full min-w-0 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl h-12 px-4 focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner truncate transition-all"
+        className="w-full min-w-0 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl h-12 pl-10 pr-4 focus:border-guinda focus:bg-white focus:outline-none focus:ring-4 focus:ring-guinda/10 shadow-inner truncate transition-all"
       />
       {open && (
         <div className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-30 max-h-56 overflow-y-auto thin-scrollbar bg-white rounded-2xl shadow-xl border border-slate-200">

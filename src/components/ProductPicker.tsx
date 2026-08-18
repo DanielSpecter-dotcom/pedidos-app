@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { useCart } from '../contexts/CartContext'
+import { useNotifications } from '../contexts/NotificationContext'
 import { extrasPorCategoria } from '../lib/extras'
 import { ExtrasCheckboxList } from './ExtrasCheckboxList'
 import { ProductoSearchSelect } from './ProductoSearchSelect'
@@ -8,6 +9,7 @@ import { ProductoSearchSelect } from './ProductoSearchSelect'
 export function ProductPicker() {
   const { productos, extras } = useAppData()
   const { addToCart } = useCart()
+  const { notificar } = useNotifications()
 
   const [productoId, setProductoId] = useState('')
   // Texto libre, no número: si el estado fuera number, cada tecla que
@@ -36,7 +38,7 @@ export function ProductPicker() {
 
   function handleAgregar() {
     if (!productoSeleccionado) {
-      alert('Seleccione un producto')
+      notificar('Seleccione un producto', 'error')
       return
     }
     const cantidad = Math.max(1, parseInt(cantidadTexto) || 1)
@@ -60,7 +62,7 @@ export function ProductPicker() {
             setProductoId(id)
             setExtrasSeleccionados(new Set())
           }}
-          placeholder="🔍 Buscar un plato..."
+          placeholder="Buscar un plato..."
           className="flex-1"
         />
         <input
@@ -99,7 +101,7 @@ export function ProductPicker() {
         </div>
         <button
           onClick={handleAgregar}
-          className="w-full sm:w-auto bg-gradient-to-r from-amarillo to-amber-400 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-extrabold h-11 sm:h-10 px-5 sm:px-6 rounded-xl shadow-lg shadow-amarillo/30 text-[11px] uppercase tracking-wider active:scale-95 transition-all flex justify-center items-center gap-1.5 focus:ring-4 focus:ring-amarillo/30"
+          className="w-full sm:w-auto bg-gradient-to-r from-amarillo to-amber-400 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-extrabold h-11 sm:h-10 px-5 sm:px-6 rounded-xl shadow-lg shadow-amarillo/30 text-[11px] uppercase tracking-wider active:scale-95 transition-all flex justify-center items-center gap-1.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-amarillo/30"
         >
           Agregar
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

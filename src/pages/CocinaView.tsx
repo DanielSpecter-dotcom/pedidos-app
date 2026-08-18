@@ -7,6 +7,7 @@ import { useNotifications } from '../contexts/NotificationContext'
 import { KitchenQueueGrid } from '../components/KitchenQueueGrid'
 import { KitchenSummary } from '../components/KitchenSummary'
 import { MobileKitchenBar } from '../components/MobileKitchenBar'
+import { IconRefresh, IconWarning } from '../components/icons'
 import type { ColaCocinaItem, PedidoCola, TipoServicio } from '../types'
 
 interface CocinaViewProps {
@@ -30,7 +31,7 @@ const OPCIONES_FILTRO: { valor: FiltroServicio; label: string }[] = [
 export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
   const { productos, categorias, meseros, refetchMesas } = useAppData()
   const { rol } = useAuth()
-  const { enviarAvisoMesero } = useNotifications()
+  const { enviarAvisoMesero, notificar } = useNotifications()
   const [pedidosCola, setPedidosCola] = useState<PedidoCola[]>([])
   const [cargando, setCargando] = useState(true)
   // Distinto de "cargando": solo true antes del primer resultado. El resto
@@ -229,10 +230,10 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
         await refetchMesas()
       } catch (err) {
         console.error('Error marcando listo:', err)
-        alert('No se pudo marcar el pedido como listo: ' + (err instanceof Error ? err.message : String(err)))
+        notificar('No se pudo marcar el pedido como listo: ' + (err instanceof Error ? err.message : String(err)), 'error')
       }
     },
-    [cargarVistaCocina, refetchMesas],
+    [cargarVistaCocina, refetchMesas, notificar],
   )
 
   // Siempre apunta a la versión más reciente de ejecutarMarcarListo, para que
@@ -335,7 +336,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-white">
               <div>
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Cola activa</h3>
-                <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                <p className="text-[11px] font-bold text-slate-500 mt-0.5">
                   {cargando
                     ? 'Sincronizando...'
                     : error
@@ -347,26 +348,31 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
               </div>
               <button
                 onClick={() => cargarVistaCocina()}
-                className="h-10 px-4 rounded-xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all"
+                className="h-10 px-4 rounded-xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
               >
-                Actualizar
+                <IconRefresh className="w-3.5 h-3.5" /> Actualizar
               </button>
             </div>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 sm:px-5 py-3 border-b border-slate-100 bg-white shrink-0">
-              {OPCIONES_FILTRO.filter((o) => o.valor === 'TODOS' || conteoPorServicio[o.valor]).map((o) => (
-                <button
-                  key={o.valor}
-                  onClick={() => setFiltroServicio(o.valor)}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wide border transition-all ${
-                    filtroServicio === o.valor
-                      ? 'bg-slate-900 text-white border-slate-900'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {o.label}
-                  {o.valor !== 'TODOS' && conteoPorServicio[o.valor] ? ` (${conteoPorServicio[o.valor]})` : ''}
-                </button>
-              ))}
+            <div className="relative border-b border-slate-100 bg-white shrink-0">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 sm:px-5 py-3">
+                {OPCIONES_FILTRO.filter((o) => o.valor === 'TODOS' || conteoPorServicio[o.valor]).map((o) => (
+                  <button
+                    key={o.valor}
+                    onClick={() => setFiltroServicio(o.valor)}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wide border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${
+                      filtroServicio === o.valor
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {o.label}
+                    {o.valor !== 'TODOS' && conteoPorServicio[o.valor] ? ` (${conteoPorServicio[o.valor]})` : ''}
+                  </button>
+                ))}
+              </div>
+              {/* Pista visual de que los chips siguen más allá del borde — no hay
+                  scrollbar (no-scrollbar) que lo indique por sí solo. */}
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent"></div>
             </div>
             <div className="flex-1 overflow-y-auto thin-scrollbar p-4 sm:p-5 grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
               {cargandoInicial ? (
@@ -376,7 +382,7 @@ export function CocinaView({ onVolverAPedidos }: CocinaViewProps) {
                 </div>
               ) : error && pedidosCola.length === 0 ? (
                 <div className="col-span-full min-h-[260px] flex flex-col items-center justify-center text-red-400 gap-2">
-                  <span className="text-3xl">!</span>
+                  <IconWarning className="w-8 h-8" />
                   <span className="text-xs font-bold">No se pudo cargar la cola de cocina.</span>
                 </div>
               ) : (

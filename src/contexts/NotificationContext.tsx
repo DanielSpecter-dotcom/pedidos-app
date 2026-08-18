@@ -13,16 +13,30 @@ export interface AvisoMesero {
   clienteNombre: string
 }
 
+export type TipoMensaje = 'success' | 'error'
+
+export interface Mensaje {
+  id: string
+  texto: string
+  tipo: TipoMensaje
+}
+
+const DURACION_MENSAJE_MS = 5000
+
 interface NotificationContextValue {
   avisos: AvisoMesero[]
   enviarAvisoMesero: (data: { pedidoId: number; labelUbicacion: string; clienteNombre: string }) => void
   descartarAviso: (id: string) => void
+  mensajes: Mensaje[]
+  notificar: (texto: string, tipo?: TipoMensaje) => void
+  descartarMensaje: (id: string) => void
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null)
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [avisos, setAvisos] = useState<AvisoMesero[]>([])
+  const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const channelRef = useRef<RealtimeChannel | null>(null)
 
   useEffect(() => {
@@ -82,8 +96,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setAvisos((prev) => prev.filter((a) => a.id !== id))
   }
 
+  // Reemplaza a los alert()/confirm() bloqueantes del navegador: mismo
+  // sistema visual que ya usan los avisos de cocina (Toast), sin congelar
+  // la UI del mesero mientras atiende una mesa.
+  function notificar(texto: string, tipo: TipoMensaje = 'success') {
+    const id = `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    setMensajes((prev) => [...prev, { id, texto, tipo }])
+    setTimeout(() => descartarMensaje(id), DURACION_MENSAJE_MS)
+  }
+
+  function descartarMensaje(id: string) {
+    setMensajes((prev) => prev.filter((m) => m.id !== id))
+  }
+
   return (
-    <NotificationContext.Provider value={{ avisos, enviarAvisoMesero, descartarAviso }}>
+    <NotificationContext.Provider value={{ avisos, enviarAvisoMesero, descartarAviso, mensajes, notificar, descartarMensaje }}>
       {children}
     </NotificationContext.Provider>
   )

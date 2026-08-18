@@ -8,6 +8,7 @@ import { PedidosView } from './pages/PedidosView'
 import { CocinaView } from './pages/CocinaView'
 import { AppHeader } from './components/AppHeader'
 import { AvisosMeseroToasts } from './components/AvisosMeseroToasts'
+import { MessageToasts } from './components/MessageToasts'
 
 function AuthenticatedApp() {
   const [vista, setVista] = useState<'pedidos' | 'cocina'>('pedidos')
@@ -21,6 +22,7 @@ function AuthenticatedApp() {
         </main>
       </CartProvider>
       {vista === 'pedidos' && <AvisosMeseroToasts />}
+      <MessageToasts />
     </NotificationProvider>
   )
 }

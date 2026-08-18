@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { useCart } from '../contexts/CartContext'
+import { IconWaiter } from './icons'
 
 export function ClienteMeseroPanel() {
   const { meseros } = useAppData()
@@ -19,8 +20,8 @@ export function ClienteMeseroPanel() {
       <div className="absolute top-0 right-0 w-32 h-32 bg-guinda/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
       <div className="space-y-3.5 relative z-10">
         <div className="flex gap-3 items-center bg-slate-50 p-2 rounded-2xl border border-slate-100">
-          <div className="w-10 h-10 rounded-xl bg-white text-guinda flex items-center justify-center text-xl shrink-0 shadow-sm font-bold">
-            🤵
+          <div className="w-10 h-10 rounded-xl bg-white text-guinda flex items-center justify-center shrink-0 shadow-sm">
+            <IconWaiter className="w-5 h-5" />
           </div>
           <select
             value={meseroId ?? ''}

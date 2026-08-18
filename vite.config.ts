@@ -18,8 +18,8 @@ export default defineConfig({
         name: 'Pedidos - Melchorita',
         short_name: 'Pedidos',
         description: 'Gestión de pedidos y cocina - Melchorita',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#8B182B',
+        background_color: '#8B182B',
         display: 'standalone',
         start_url: '/',
         icons: [

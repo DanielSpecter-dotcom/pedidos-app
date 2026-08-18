@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAppData } from './AppDataContext'
+import { useNotifications } from './NotificationContext'
 import type { CartItem, DeliveryInfo, Extra, Producto, TipoServicio } from '../types'
 
 interface CartContextValue {
@@ -34,6 +35,7 @@ const DELIVERY_VACIO: DeliveryInfo = { nombre: '', direccion: '', telefono: '' }
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { refetchMesas, categorias } = useAppData()
+  const { notificar } = useNotifications()
 
   const [carrito, setCarrito] = useState<CartItem[]>([])
   const [tipoServicio, setTipoServicioState] = useState<TipoServicio>('MESA')
@@ -129,14 +131,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   function removeFromCart(index: number) {
-    if (!confirm('¿Eliminar producto?')) return
     setCarrito((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function obtenerIdClienteGenerico(): Promise<number> {
     const { data } = await supabase.from('Clientes').select('ClienteID').eq('NumeroDocumento', '00000000').single()
     if (data) return data.ClienteID
-    alert('No se encontró el cliente genérico (DNI: 00000000). Créalo en Supabase.')
+    notificar('No se encontró el cliente genérico (DNI: 00000000). Créalo en Supabase.', 'error')
     throw new Error('Cliente genérico no encontrado')
   }
 
@@ -170,19 +171,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   async function confirmarPedido() {
     if (carrito.length === 0) {
-      alert('⚠️ El pedido está vacío')
+      notificar('El pedido está vacío', 'error')
       return
     }
 
     if (tipoServicio === 'DELIVERY') {
-      if (!delivery.nombre.trim()) return alert('⚠️ Ingresa el nombre del destinatario')
-      if (!delivery.direccion.trim()) return alert('⚠️ Ingresa la dirección de entrega')
-      if (!delivery.telefono.trim()) return alert('⚠️ Ingresa el teléfono de contacto')
+      if (!delivery.nombre.trim()) return notificar('Ingresa el nombre del destinatario', 'error')
+      if (!delivery.direccion.trim()) return notificar('Ingresa la dirección de entrega', 'error')
+      if (!delivery.telefono.trim()) return notificar('Ingresa el teléfono de contacto', 'error')
     }
 
     const mesasIds = Array.from(mesasSeleccionadas)
     if (tipoServicio === 'MESA' && mesasIds.length === 0) {
-      alert('⚠️ Por favor selecciona al menos una mesa.')
+      notificar('Por favor selecciona al menos una mesa.', 'error')
       return
     }
 
@@ -259,7 +260,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await refetchMesas()
       }
 
-      alert(`✅ ¡Pedido #${nuevoPedidoId} guardado correctamente!`)
+      notificar(`¡Pedido #${nuevoPedidoId} guardado correctamente!`, 'success')
       setCarrito([])
       setDeliveryState(DELIVERY_VACIO)
       setDni('')
@@ -267,7 +268,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setMesasSeleccionadas(new Set())
     } catch (err) {
       console.error('Error al guardar:', err)
-      alert('❌ Error al guardar: ' + (err instanceof Error ? err.message : String(err)))
+      notificar('Error al guardar: ' + (err instanceof Error ? err.message : String(err)), 'error')
     } finally {
       setGuardando(false)
     }

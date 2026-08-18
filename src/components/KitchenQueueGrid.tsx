@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PedidoCola } from '../types'
+import { IconBell, IconCheck, IconNote, IconUndo, IconUser, IconWaiter } from './icons'
 
 interface KitchenQueueGridProps {
   pedidos: PedidoCola[]
@@ -94,8 +95,12 @@ function PedidoColaCard({
       </div>
 
       <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2 text-xs">
-        <span className="font-bold text-slate-600 truncate">👤 {pedido.clienteNombre}</span>
-        <span className="font-bold text-slate-400 truncate">🤵 {pedido.meseroNombre}</span>
+        <span className="flex items-center gap-1.5 font-bold text-slate-600 truncate">
+          <IconUser className="w-3.5 h-3.5 shrink-0" /> {pedido.clienteNombre}
+        </span>
+        <span className="flex items-center gap-1.5 font-bold text-slate-400 truncate">
+          <IconWaiter className="w-3.5 h-3.5 shrink-0" /> {pedido.meseroNombre}
+        </span>
       </div>
 
       <div className="flex-1 divide-y divide-slate-100">
@@ -116,7 +121,11 @@ function PedidoColaCard({
                   <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-400 text-slate-900 uppercase">Llevar</span>
                 )}
               </div>
-              {item.Notas && <div className="text-[10px] text-guinda font-medium italic">📝 {item.Notas}</div>}
+              {item.Notas && (
+                <div className="flex items-center gap-1 text-[10px] text-guinda font-medium italic">
+                  <IconNote className="w-3 h-3 shrink-0" /> {item.Notas}
+                </div>
+              )}
             </div>
             <input
               type="checkbox"
@@ -131,25 +140,25 @@ function PedidoColaCard({
       {pendienteDespacho ? (
         <button
           onClick={() => onDeshacerListo(pedido.pedidoId)}
-          className="h-12 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all shrink-0 flex items-center justify-center gap-2"
+          className="h-12 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all shrink-0 flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
         >
-          ↩ Deshacer — despachando el pedido...
+          <IconUndo className="w-4 h-4" /> Deshacer — despachando el pedido...
         </button>
       ) : esAdmin ? (
         <div className="grid grid-cols-2 gap-px bg-slate-100 shrink-0">
           <button
             onClick={handleAvisar}
-            className={`h-12 text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 ${
+            className={`h-12 text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-900/40 ${
               avisado ? 'bg-amber-50 text-amber-600' : 'bg-amber-400 hover:bg-amber-500 text-slate-900'
             }`}
           >
-            {avisado ? '🔔 Mesero avisado' : '🔔 Avisar Mesero'}
+            <IconBell className="w-4 h-4" /> {avisado ? 'Mesero avisado' : 'Avisar Mesero'}
           </button>
           <button
             onClick={() => onMarcarListo(pedido.pedidoId)}
-            className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all"
+            className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wide active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
           >
-            Marcar Listo ✓
+            Marcar Listo <IconCheck className="w-4 h-4" />
           </button>
         </div>
       ) : (

@@ -21,6 +21,9 @@
 
 * {
   -webkit-tap-highlight-color: transparent;
+  /* Evita el zoom por doble-tap accidental en los botones, sin bloquear
+     el pinch-zoom intencional (a diferencia de user-scalable=no). */
+  touch-action: manipulation;
 }
 
 html {

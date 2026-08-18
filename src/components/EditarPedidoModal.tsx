@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAppData } from '../contexts/AppDataContext'
+import { useNotifications } from '../contexts/NotificationContext'
 import { extrasPorCategoria } from '../lib/extras'
 import { ExtrasCheckboxList } from './ExtrasCheckboxList'
 import { PersonalizeModal } from './PersonalizeModal'
 import { ProductoSearchSelect } from './ProductoSearchSelect'
-import type { EstadoPedido, PlatoEditar } from '../types'
+import { IconClose, IconNote, IconPencil, IconRefresh, IconUtensils, IconWarning } from './icons'
+import { TIPO_SERVICIO_ICON, TIPO_SERVICIO_LABEL } from '../lib/tipoServicio'
+import type { EstadoPedido, PlatoEditar, TipoServicio } from '../types'
 
 interface EditarPedidoModalProps {
   // Apertura desde el mapa de mesas (MESA): resuelve el pedido buscando en
@@ -22,16 +25,26 @@ interface PedidoEditando {
   pedidoID: number
   estadoPedido: EstadoPedido
   labelUbicacion: string
-  tipoServicio: string
+  tipoServicio: TipoServicio
+  mesaIdsActuales: number[]
 }
 
 export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGuardado }: EditarPedidoModalProps) {
   const { productos, extras, categorias, mesas, refetchMesas } = useAppData()
+  const { notificar } = useNotifications()
 
   const [mostrarCambioMesa, setMostrarCambioMesa] = useState(false)
-  const [mesaDestinoId, setMesaDestinoId] = useState('')
+  const [mesasDestino, setMesasDestino] = useState<Set<number>>(new Set())
   const [cambiandoMesa, setCambiandoMesa] = useState(false)
-  const mesasLibres = mesas.filter((m) => m.Estado === 'LIBRE')
+
+  function toggleMesaDestino(mesaId: number) {
+    setMesasDestino((prev) => {
+      const next = new Set(prev)
+      if (next.has(mesaId)) next.delete(mesaId)
+      else next.add(mesaId)
+      return next
+    })
+  }
 
   // Igual que en CartContext.confirmarPedido: Bebidas/Infusiones/Licores no
   // pasan por cocina, nacen SERVIDO en vez de EN_COLA (ver
@@ -67,6 +80,11 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
   // Igual que nuevoTotal en guardarCambiosEditar: se cuentan todos los
   // platos, SERVIDO incluido — ya entregado no es lo mismo que ya pagado.
   const total = platos.reduce((sum, p) => sum + p.cantidad * p.precioUnit, 0)
+
+  // Elegibles para el nuevo grupo: libres, o ya asignadas a este mismo
+  // pedido (así se puede mantener parte de una fusión y sumar/quitar otras
+  // mesas, no solo mover el grupo completo a otro lado).
+  const mesasElegibles = mesas.filter((m) => m.Estado === 'LIBRE' || pedido?.mesaIdsActuales.includes(m.MesaID))
 
   useEffect(() => {
     let cancelado = false
@@ -115,6 +133,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
         }
 
         let labelUbicacion: string
+        let mesaIdsActuales: number[] = []
         if (pedidoActual.TipoServicio === 'MESA') {
           const { data: todasAsigs } = await supabase
             .from('AsignacionMesas')
@@ -123,28 +142,22 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
 
           labelUbicacion = numeroMesa ? `Mesa ${numeroMesa}` : 'Mesa'
           if (todasAsigs && todasAsigs.length > 0) {
-            const mesaIdsDelPedido = todasAsigs.map((a) => a.MesaID)
-            const { data: mesasData } = await supabase
-              .from('Mesas')
-              .select('NumeroMesa')
-              .in('MesaID', mesaIdsDelPedido)
-              .order('NumeroMesa', { ascending: true })
+            mesaIdsActuales = todasAsigs.map((a) => a.MesaID)
+            const { data: mesasData } = await supabase.from('Mesas').select('NumeroMesa').in('MesaID', mesaIdsActuales)
             if (mesasData && mesasData.length > 0) {
-              labelUbicacion = 'Mesa ' + mesasData.map((m) => m.NumeroMesa).join(' + ')
+              // NumeroMesa es texto en la base — orden alfabético dejaría
+              // "10 + 11 + 9" en vez de "9 + 10 + 11" en mesas fusionadas.
+              const numeros = mesasData
+                .map((m) => m.NumeroMesa)
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+              labelUbicacion = 'Mesa ' + numeros.join(' + ')
             }
           }
         } else {
           // Llevar/Recoger/Delivery: sin mesa, se identifica por tipo +
           // el nombre suelto guardado sin crear un Cliente (ver
           // CartContext.confirmarPedido).
-          const tipoLabel =
-            pedidoActual.TipoServicio === 'LLEVAR'
-              ? '🥡 Para Llevar'
-              : pedidoActual.TipoServicio === 'RECOGER'
-                ? '🎒 Para Recoger'
-                : pedidoActual.TipoServicio === 'DELIVERY'
-                  ? '🛵 Delivery'
-                  : pedidoActual.TipoServicio
+          const tipoLabel = TIPO_SERVICIO_LABEL[pedidoActual.TipoServicio as TipoServicio] || pedidoActual.TipoServicio
           labelUbicacion = pedidoActual.NombreDestinatario ? `${tipoLabel} — ${pedidoActual.NombreDestinatario}` : tipoLabel
         }
 
@@ -183,7 +196,8 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
             pedidoID: pedidoActual.PedidoID,
             estadoPedido: pedidoActual.EstadoPedido,
             labelUbicacion,
-            tipoServicio: pedidoActual.TipoServicio,
+            tipoServicio: pedidoActual.TipoServicio as TipoServicio,
+            mesaIdsActuales,
           })
           setPlatos(platosOrdenados)
         }
@@ -201,25 +215,31 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
   }, [pedidoId, mesaId, numeroMesa, productos])
 
   async function cambiarMesa() {
-    if (!pedido || !mesaDestinoId) return
-    const mesaDestino = mesas.find((m) => m.MesaID === parseInt(mesaDestinoId))
-    if (!mesaDestino) return
+    if (!pedido || mesasDestino.size === 0) return
+    const idsDestino = Array.from(mesasDestino)
+    const mesasDestinoData = mesas.filter((m) => mesasDestino.has(m.MesaID))
 
     setCambiandoMesa(true)
     try {
-      const { error } = await supabase.rpc('cambiar_mesa_pedido', {
+      // RPC que soporta mover a varias mesas a la vez (fusiones), no solo a
+      // una — ver cambiar_mesas_pedido en la base de datos.
+      const { error } = await supabase.rpc('cambiar_mesas_pedido', {
         p_pedido_id: pedido.pedidoID,
-        p_mesa_nueva_id: mesaDestino.MesaID,
+        p_mesas_nuevas_ids: idsDestino,
       })
       if (error) throw error
 
-      setPedido({ ...pedido, labelUbicacion: `Mesa ${mesaDestino.NumeroMesa}` })
+      const numerosOrdenados = mesasDestinoData
+        .slice()
+        .sort((a, b) => a.NumeroMesa.localeCompare(b.NumeroMesa, undefined, { numeric: true }))
+        .map((m) => m.NumeroMesa)
+      setPedido({ ...pedido, labelUbicacion: 'Mesa ' + numerosOrdenados.join(' + '), mesaIdsActuales: idsDestino })
       setMostrarCambioMesa(false)
-      setMesaDestinoId('')
+      setMesasDestino(new Set())
       await refetchMesas()
     } catch (err) {
       console.error('Error al cambiar de mesa:', err)
-      alert('❌ No se pudo cambiar de mesa: ' + (err instanceof Error ? err.message : String(err)))
+      notificar('No se pudo cambiar de mesa: ' + (err instanceof Error ? err.message : String(err)), 'error')
     } finally {
       setCambiandoMesa(false)
     }
@@ -236,7 +256,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
 
   function agregarPlatoEditar() {
     if (!productoSeleccionado) {
-      alert('Selecciona un producto')
+      notificar('Selecciona un producto', 'error')
       return
     }
     const cantidad = Math.max(1, parseInt(cantidadTexto) || 1)
@@ -345,12 +365,12 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
       const { error: errTotal } = await supabase.from('Pedidos').update({ Total: nuevoTotal }).eq('PedidoID', pedido.pedidoID)
       if (errTotal) throw errTotal
 
-      alert('✅ Pedido actualizado. Los platos nuevos están al final de la cola en cocina.')
+      notificar('Pedido actualizado. Los platos nuevos están al final de la cola en cocina.', 'success')
       onGuardado()
       onClose()
     } catch (err) {
       console.error('Error al guardar:', err)
-      alert('❌ Error al guardar: ' + (err instanceof Error ? err.message : String(err)))
+      notificar('Error al guardar: ' + (err instanceof Error ? err.message : String(err)), 'error')
     } finally {
       setGuardando(false)
     }
@@ -360,12 +380,18 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-opacity fade-animate" onClick={onClose}></div>
+      {/* Sin onClick: cerrar acá descartaría en silencio platos agregados/quitados
+          sin guardar — un roce accidental del pulgar es muy fácil en celular.
+          Cerrar es siempre una acción explícita (✕ o CERRAR). */}
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-opacity fade-animate"></div>
       <div className="relative w-full md:w-[580px] bg-white rounded-[24px] sm:rounded-[32px] shadow-2xl overflow-hidden modal-animate flex flex-col h-auto max-h-[calc(100dvh-14px)] border border-slate-100 z-10 max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw]">
         <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/10 rounded-[16px] flex items-center justify-center text-white text-xl font-black border border-white/10 backdrop-blur-sm shadow-inner">
-              🍽️
+            <div className="w-12 h-12 bg-white/10 rounded-[16px] flex items-center justify-center text-white border border-white/10 backdrop-blur-sm shadow-inner">
+              {(() => {
+                const Icono = TIPO_SERVICIO_ICON[pedido?.tipoServicio ?? 'MESA']
+                return <Icono className="w-6 h-6" />
+              })()}
             </div>
             <div className="flex flex-col">
               <h3 className="text-white font-extrabold text-lg leading-tight tracking-wide">
@@ -390,9 +416,10 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
             )}
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center font-bold hover:bg-white/20 active:scale-90 transition-all backdrop-blur-sm"
+              aria-label="Cerrar"
+              className="w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all backdrop-blur-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
             >
-              ✕
+              <IconClose className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -401,45 +428,61 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
           <div className="px-5 py-2 bg-slate-50 border-b border-slate-100 shrink-0">
             {!mostrarCambioMesa ? (
               <button
-                onClick={() => setMostrarCambioMesa(true)}
-                className="text-xs font-black text-guinda uppercase tracking-wide inline-flex items-center gap-1.5 bg-white border border-guinda/20 px-3.5 py-2 rounded-xl shadow-sm active:scale-95 hover:bg-guinda/5 transition-all"
+                onClick={() => {
+                  setMesasDestino(new Set(pedido?.mesaIdsActuales ?? []))
+                  setMostrarCambioMesa(true)
+                }}
+                className="text-xs font-black text-guinda uppercase tracking-wide inline-flex items-center gap-1.5 bg-white border border-guinda/20 px-3.5 py-2 rounded-xl shadow-sm active:scale-95 hover:bg-guinda/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/40"
               >
-                🔄 Cambiar de mesa
+                <IconRefresh className="w-3.5 h-3.5" /> Cambiar de mesa
               </button>
             ) : (
-              <div className="flex items-center gap-2">
-                <select
-                  value={mesaDestinoId}
-                  onChange={(e) => setMesaDestinoId(e.target.value)}
-                  className="flex-1 bg-white border border-slate-200 rounded-xl px-3 h-9 text-xs font-bold focus:border-guinda focus:ring-4 focus:ring-guinda/10 outline-none"
-                >
-                  <option value="">Elegí la mesa destino...</option>
-                  {mesasLibres.map((m) => (
-                    <option key={m.MesaID} value={m.MesaID}>
-                      Mesa {m.NumeroMesa}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={cambiarMesa}
-                  disabled={!mesaDestinoId || cambiandoMesa}
-                  className="h-9 px-4 rounded-xl bg-guinda text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all disabled:opacity-50 shrink-0"
-                >
-                  {cambiandoMesa ? '...' : 'Mover'}
-                </button>
-                <button
-                  onClick={() => {
-                    setMostrarCambioMesa(false)
-                    setMesaDestinoId('')
-                  }}
-                  className="h-9 px-3 rounded-xl bg-slate-100 text-slate-500 text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all shrink-0"
-                >
-                  ✕
-                </button>
+              <div>
+                <p className="text-[10px] font-bold text-slate-500 mb-2">
+                  Elegí una o varias mesas — para fusiones, tocá todas las que formarán el nuevo grupo.
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  {mesasElegibles.map((m) => {
+                    const seleccionada = mesasDestino.has(m.MesaID)
+                    return (
+                      <button
+                        key={m.MesaID}
+                        onClick={() => toggleMesaDestino(m.MesaID)}
+                        aria-pressed={seleccionada}
+                        className={`h-9 min-w-9 px-2.5 rounded-xl text-xs font-black transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/40 ${
+                          seleccionada
+                            ? 'bg-guinda text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:border-guinda/40'
+                        }`}
+                      >
+                        {m.NumeroMesa}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={cambiarMesa}
+                    disabled={mesasDestino.size === 0 || cambiandoMesa}
+                    className="h-11 flex-1 rounded-xl bg-guinda text-white text-[11px] font-black uppercase tracking-wide active:scale-95 transition-all disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
+                  >
+                    {cambiandoMesa ? '...' : mesasDestino.size > 1 ? `Mover a ${mesasDestino.size} mesas` : 'Mover'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMostrarCambioMesa(false)
+                      setMesasDestino(new Set())
+                    }}
+                    aria-label="Cancelar cambio de mesa"
+                    className="h-11 w-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center active:scale-95 transition-all shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                  >
+                    <IconClose className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
-            {mostrarCambioMesa && mesasLibres.length === 0 && (
-              <p className="text-[10px] font-bold text-slate-400 mt-2">No hay mesas libres ahora mismo.</p>
+            {mostrarCambioMesa && mesasElegibles.length === 0 && (
+              <p className="text-[10px] font-bold text-slate-500 mt-2">No hay mesas libres ahora mismo.</p>
             )}
           </div>
         )}
@@ -447,7 +490,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
         <div className="px-5 pt-4 pb-3 bg-white border-b border-slate-100 shrink-0">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">Sumar al pedido</p>
           <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <ProductoSearchSelect
                 productos={productos}
                 value={productoId}
@@ -456,7 +499,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
                   setExtrasSeleccionados(new Set())
                 }}
                 placeholder="Elige producto..."
-                className="flex-1"
+                className="flex-1 min-w-[180px]"
               />
               <input
                 type="text"
@@ -471,7 +514,7 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
             <ExtrasCheckboxList extras={extrasCheckbox} seleccionados={extrasSeleccionados} onToggle={toggleExtra} />
             <button
               onClick={agregarPlatoEditar}
-              className="w-full h-12 bg-gradient-to-r from-amarillo to-amber-400 text-slate-900 font-extrabold rounded-2xl text-xs active:scale-95 transition-all shadow-md shadow-amarillo/20 border border-amber-300 tracking-wider uppercase"
+              className="w-full h-12 bg-gradient-to-r from-amarillo to-amber-400 text-slate-900 font-extrabold rounded-2xl text-xs active:scale-95 transition-all shadow-md shadow-amarillo/20 border border-amber-300 tracking-wider uppercase focus:outline-none focus-visible:ring-4 focus-visible:ring-amarillo/30"
             >
               + Añadir al Pedido
             </button>
@@ -497,14 +540,14 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
 
           {!cargando && error && (
             <div className="p-8 flex flex-col items-center justify-center text-red-400 gap-2">
-              <span className="text-3xl">⚠️</span>
+              <IconWarning className="w-8 h-8" />
               <span className="text-xs font-bold">{error}</span>
             </div>
           )}
 
           {!cargando && !error && platos.length === 0 && (
             <div className="p-8 flex flex-col items-center justify-center text-gray-300 gap-2">
-              <span className="text-3xl">🍽️</span>
+              <IconUtensils className="w-8 h-8" />
               <span className="text-xs font-bold uppercase tracking-wider">Sin platos</span>
             </div>
           )}
@@ -536,27 +579,33 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
                           </span>
                         )}
                       </div>
-                      {plato.notas && <div className="text-[10px] text-guinda font-medium mt-0.5 italic">📝 {plato.notas}</div>}
+                      {plato.notas && (
+                        <div className="flex items-center gap-1 text-[10px] text-guinda font-medium mt-0.5 italic">
+                          <IconNote className="w-3 h-3 shrink-0" /> {plato.notas}
+                        </div>
+                      )}
                     </div>
                     <span className="font-bold text-xs text-gray-600 whitespace-nowrap">S/ {subtotal.toFixed(2)}</span>
                     {!esServido && (
                       <button
                         onClick={() => setPersonalizeIndex(index)}
+                        aria-label={`Personalizar ${plato.nombre}`}
                         title="Personalizar"
-                        className="w-9 h-9 rounded-full hover:bg-guinda/10 active:bg-guinda/15 text-slate-300 hover:text-guinda flex items-center justify-center text-base transition-colors shrink-0"
+                        className="w-11 h-11 rounded-full hover:bg-guinda/10 active:bg-guinda/15 text-slate-300 hover:text-guinda flex items-center justify-center transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/40"
                       >
-                        ✏️
+                        <IconPencil className="w-4 h-4" />
                       </button>
                     )}
                     {!esServido ? (
                       <button
                         onClick={() => eliminarPlatoEditar(index)}
-                        className="w-9 h-9 rounded-full hover:bg-red-50 active:bg-red-100 text-gray-300 hover:text-red-500 flex items-center justify-center text-base transition-colors shrink-0"
+                        aria-label={`Quitar ${plato.nombre}`}
+                        className="w-11 h-11 rounded-full hover:bg-red-50 active:bg-red-100 text-gray-300 hover:text-red-500 flex items-center justify-center transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                       >
-                        ✕
+                        <IconClose className="w-4 h-4" />
                       </button>
                     ) : (
-                      <div className="w-9 shrink-0"></div>
+                      <div className="w-11 shrink-0"></div>
                     )}
                   </div>
                 )
@@ -575,14 +624,14 @@ export function EditarPedidoModal({ pedidoId, mesaId, numeroMesa, onClose, onGua
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="w-1/3 min-w-0 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all"
+              className="w-1/3 min-w-0 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
             >
               CERRAR
             </button>
             <button
               onClick={guardarCambiosEditar}
               disabled={guardando || cargando || !!error}
-              className="flex-1 min-w-0 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all shadow-lg shadow-guinda/30 border border-guinda-light/50 tracking-wide whitespace-nowrap disabled:opacity-70"
+              className="flex-1 min-w-0 bg-gradient-to-r from-guinda to-guinda-light text-white font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm active:scale-95 transition-all shadow-lg shadow-guinda/30 border border-guinda-light/50 tracking-wide whitespace-nowrap disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-guinda/50"
             >
               {guardando ? 'Guardando...' : 'GUARDAR CAMBIOS'}
             </button>
