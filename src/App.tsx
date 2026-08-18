@@ -17,7 +17,7 @@ function AuthenticatedApp() {
     <NotificationProvider>
       <CartProvider>
         <AppHeader vista={vista} onChangeVista={setVista} />
-        <main className="flex-1 w-full max-w-[1600px] h-auto lg:h-full flex flex-col lg:overflow-hidden relative pb-40 lg:pb-0">
+        <main className="flex-1 w-full max-w-[1600px] h-auto lg:h-full flex flex-col lg:overflow-hidden relative pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0">
           {vista === 'pedidos' ? <PedidosView /> : <CocinaView onVolverAPedidos={() => setVista('pedidos')} />}
         </main>
       </CartProvider>

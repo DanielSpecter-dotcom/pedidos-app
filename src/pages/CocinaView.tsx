@@ -16,7 +16,7 @@ interface CocinaViewProps {
 
 // Tiempo de gracia entre tocar "Marcar Listo" y que de verdad se despache el
 // pedido — da chance de deshacerlo si fue un toque accidental.
-const DESPACHO_DELAY_MS = 5000
+const DESPACHO_DELAY_MS = 3000
 
 type FiltroServicio = 'TODOS' | TipoServicio
 

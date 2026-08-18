@@ -9,7 +9,7 @@ export function CartTable({ onRowClick }: CartTableProps) {
   const { carrito, removeFromCart } = useCart()
 
   return (
-    <div className="bg-white rounded-[24px] shadow-glass border border-slate-200/60 flex flex-col min-h-[250px] lg:min-h-0 lg:flex-1 lg:overflow-hidden relative mb-12 lg:mb-0">
+    <div className="bg-white rounded-[24px] shadow-glass border border-slate-200/60 flex flex-col min-h-[250px] lg:min-h-0 lg:flex-1 lg:overflow-hidden relative">
       <div className="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest grid grid-cols-[40px_1fr_75px_40px] items-center border-b border-slate-200 shrink-0 h-9 rounded-t-[24px] px-2">
         <div className="text-center">#</div>
         <div className="pl-2">Descripción</div>

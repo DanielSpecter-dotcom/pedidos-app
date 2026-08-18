@@ -53,10 +53,10 @@ export function ClienteMeseroPanel() {
           />
           <input
             type="text"
-            placeholder="Nombre completo del cliente"
+            placeholder="Nombre del cliente"
             value={nombreCliente}
             onChange={(e) => setNombreCliente(e.target.value)}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold focus:bg-white focus:border-amarillo focus:ring-4 focus:ring-amarillo/20 outline-none transition-all placeholder-slate-400 shadow-inner"
+            className="flex-1 min-w-0 truncate bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold focus:bg-white focus:border-amarillo focus:ring-4 focus:ring-amarillo/20 outline-none transition-all placeholder-slate-400 shadow-inner"
           />
         </div>
       </div>
